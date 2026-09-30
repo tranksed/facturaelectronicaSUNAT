@@ -8,17 +8,50 @@ Este manual contiene la guía completa y profesional para:
 
 ---
 
-## 📌 1. Requisitos Previos del VPS
+## 📊 1. Dimensionamiento de Hardware y Recursos del VPS (Según Volumen)
 
-* **Servidor VPS:** Mínimo 1 vCPU, 1 GB de RAM (Recomendado: 2 vCPU, 2 GB o 4 GB RAM).
-* **Sistema Operativo:** Ubuntu 22.04 LTS / Ubuntu 24.04 LTS o Debian 11/12.
+El consumo de recursos en un sistema de facturación electrónica depende principalmente de tres factores:
+1. **CPU:** Para la firma digital RSA-SHA256 del XML UBL 2.1 y compresión Deflate (ZIP). Son micro-ráfagas de cálculo criptográfico (~25 a 45 ms por comprobante).
+2. **RAM:** Para mantener los workers de Node.js (PM2 en modo cluster), el motor de plantillas HTML y el caché de certificados `.pfx` en memoria.
+3. **Almacenamiento (Disco):** Cada comprobante completo (XML firmado + ZIP enviado + CDR ZIP + CDR XML + A4 HTML + Ticket HTML + Metadata JSON) ocupa un promedio de **~35 KB en total**.
+
+### Tabla Recomendada de Hardware según Volumen de Facturación:
+
+| Nivel de Carga | Facturas / Día | Facturas / Semana | Facturas / Mes | CPU Recomendada | RAM Mínima | Disco / Storage | Base de Datos | Costo Aprox. VPS |
+|---|---|---|---|---|---|---|---|---|
+| **🌱 Inicial / Micro** | Hasta 300 | Hasta ~2,100 | Hasta ~9,000 | **1 vCPU** | **1 GB - 2 GB** | 25 GB SSD | SQLite | ~$3.50 a $6 USD/mes |
+| **🏢 Pyme / Medio** | Hasta 2,500 | Hasta ~17,500 | Hasta ~75,000 | **2 vCPU** | **4 GB** | 50 GB NVMe o S3 | SQLite / Postgres | ~$10 a $18 USD/mes |
+| **🏬 Retail / Alto** | Hasta 15,000 | Hasta ~105,000 | Hasta ~450,000 | **4 vCPU** | **8 GB** | S3 / Cloudflare R2 | PostgreSQL | ~$24 a $40 USD/mes |
+| **🚀 Enterprise / SaaS** | 50,000 a 200,000+ | 350,000+ | 1.5M a 6M+ | **8+ vCPU** (Cluster) | **16 GB - 32 GB** | S3 / Cloudflare R2 | PostgreSQL Cluster | ~$60 a $120 USD/mes |
+
+---
+
+### 💾 Proyección de Almacenamiento en Disco (Si usas Storage Local):
+
+Si guardas los archivos directamente en el disco del VPS (sin S3 externo):
+
+| Volumen Diario | Volumen Semanal | Volumen Mensual | Crecimiento Anual Estimado | Tipo de Almacenamiento Recomendado |
+|---|---|---|---|---|
+| **100 docs/día** | 700 docs (~24.5 MB) | 3,000 docs (~105 MB) | **~1.26 GB / año** | Disco local del VPS (suficiente con 25 GB) |
+| **1,000 docs/día** | 7,000 docs (~245 MB) | 30,000 docs (~1.05 GB) | **~12.6 GB / año** | Disco local o S3 / Cloudflare R2 |
+| **5,000 docs/día** | 35,000 docs (~1.22 GB) | 150,000 docs (~5.25 GB) | **~63.0 GB / año** | **Recomendado: Cloudflare R2 / S3** |
+| **20,000 docs/día** | 140,000 docs (~4.9 GB) | 600,000 docs (~21.0 GB) | **~252 GB / año** | **Obligatorio: Cloudflare R2 / AWS S3** |
+
+> [!TIP]
+> **Recomendación para Producción:** Conectar **Cloudflare R2** desde el Super Panel Admin. Almacenar 100,000 facturas cuesta menos de **$0.15 USD al mes** y las descargas de clientes tienen **$0 costo de transferencia (Zero Egress)**. El disco de tu VPS nunca se llenará.
+
+---
+
+## 📌 2. Requisitos Previos del Servidor VPS
+
+* **Sistema Operativo:** Ubuntu 22.04 LTS / Ubuntu 24.04 LTS o Debian 11/12 (64-bit).
 * **Acceso:** Acceso SSH con usuario `root` o privilegios `sudo`.
 * **Dominio o Subdominio:** Un dominio registrado (ej. `facturador.tudominio.com`) con un registro DNS de tipo **A** apuntando hacia la dirección IP pública de tu VPS.
   * *Ejemplo DNS en Cloudflare/GoDaddy:*
     * Tipo: `A`
     * Nombre: `facturador`
     * Contenido: `203.0.113.195` (IP de tu VPS)
-    * TTL: Automático
+    * TTL: Automático (o DNS Only si usas Certbot inicial)
 
 ---
 
