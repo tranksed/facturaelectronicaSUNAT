@@ -1,0 +1,142 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  passwordHash String
+  name         String
+  role         String    @default("USER") // "USER" | "SUPERADMIN"
+  status       String    @default("ACTIVE") // "ACTIVE" | "SUSPENDED"
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  companies    Company[]
+}
+
+model Company {
+  id                 String    @id @default(uuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  ruc                String    // RUC (11 dígitos)
+  razonSocial        String
+  nombreComercial    String?
+  direccion          String
+  contacto           String?   // email - teléfono (ej: contacto@esg.la - 997592981)
+  piePagina          String?   // Pie de página para impresión (saludos, cuentas, etc)
+  logoBase64         String?   // Logo personalizado de la empresa
+  mostrarLogoTicket  Boolean   @default(true) // Mostrar en formato Ticket
+  
+  // Cuentas Bancarias (JSON array: [{ cuenta, cci, banco, moneda }])
+  bankAccountsJson   String?   @default("[]")
+  
+  // Preferencias para el Aplicativo (JSON: predeterminados + opciones extra)
+  preferencesJson    String?   @default("{}")
+  
+  // Credenciales SUNAT
+  usuarioSol         String    @default("MODDATOS")
+  claveSol           String    @default("moddatos")
+  pfxCert            Bytes?    // Certificado Digital (.pfx)
+  pfxPassword        String?
+  isProduction       Boolean   @default(false)
+  
+  // Bot de Telegram específico de esta empresa
+  telegramToken      String?
+  
+  isDefault          Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  
+  invoices           Invoice[]
+}
+
+model Invoice {
+  id                 String    @id // Formato: F001-00000001
+  companyId          String?
+  company            Company?  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  tipoDoc            String    // "01"=Factura, "03"=Boleta, "07"=Nota Crédito
+  serie              String?
+  correlativo        String?
+  clienteTipoDoc     String    // "6"=RUC, "1"=DNI
+  clienteDoc         String
+  clienteNombre      String
+  clienteDireccion   String?
+  
+  fechaEmision       String?
+  fechaVencimiento   String?
+  tipoOperacion      String?   @default("0101")
+  moneda             String?   @default("PEN")
+  formaPago          String?   @default("Contado")
+  observaciones      String?
+  
+  montoGravado       Float
+  montoIgv           Float
+  montoTotal         Float
+  itemsJson          String    // JSON con array de ítems
+  
+  xmlSigned          String?   // Texto XML firmado
+  xmlZip             Bytes?    // ZIP del XML
+  cdrZip             Bytes?    // Constancia de Recepción de SUNAT
+  status             String    // "ACEPTADO", "RECHAZADO", "ANULADO", "ERROR"
+  sunatResponseCode  String?
+  sunatMessage       String?
+  sunatObservations  String?
+  createdAt          DateTime  @default(now())
+}
+
+model PlatformConfig {
+  id                   Int       @id @default(1)
+  platformName         String    @default("APISUNAT PRO")
+  platformSubtitle     String?   @default("Plataforma SaaS Multitenant de Facturación Electrónica SUNAT")
+  logoUrl              String?   // Logo de la plataforma (marca blanca)
+  primaryColor         String    @default("#2563eb")
+  allowRegistration    Boolean   @default(true)
+  telegramBotEnabled   Boolean   @default(true)
+  supportEmail         String?   @default("soporte@apisunat.com")
+  supportPhone         String?   @default("+51 999 888 777")
+  
+  // Configuración de Storage / File Server / S3
+  storageProvider      String    @default("LOCAL") // "LOCAL" | "S3" | "SFTP" | "HYBRID"
+  localStoragePath     String    @default("storage/comprobantes")
+  
+  // Amazon S3 / Compatible (Cloudflare R2, MinIO, Wasabi, DigitalOcean Spaces)
+  s3Endpoint           String?   // Ej: https://<account_id>.r2.cloudflarestorage.com o http://127.0.0.1:9000
+  s3Region             String?   @default("us-east-1")
+  s3Bucket             String?
+  s3AccessKey          String?
+  s3SecretKey          String?
+  s3ForcePathStyle     Boolean   @default(false) // true para MinIO
+  s3PublicUrl          String?   // Opcional: URL pública CDN
+  
+  // File Server Remoto / SFTP
+  sftpHost             String?
+  sftpPort             Int?      @default(22)
+  sftpUser             String?
+  sftpPassword         String?
+  sftpRemotePath       String?   @default("/var/storage/comprobantes")
+  
+  updatedAt            DateTime  @updatedAt
+}
+
+model Config {
+  id              Int      @id @default(1)
+  ruc             String
+  razonSocial     String
+  nombreComercial String?
+  direccion       String
+  usuarioSol      String
+  claveSol        String
+  pfxCert         Bytes?
+  pfxPassword     String?
+  telegramToken   String?
+  isProduction    Boolean  @default(false)
+  updatedAt       DateTime @updatedAt
+}

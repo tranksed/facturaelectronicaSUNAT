@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Production Builds
+client/dist/
+dist/
+
+# Environment Variables
+.env
+.env.local
+.env.production
+server/.env
+
+# SQLite Database & Cache
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+server/prisma/*.db
+server/prisma/*.db-journal
+server/prisma/*.db-wal
+server/prisma/*.db-shm
+server/dev.db
+
+# Storage / Comprobantes Locales de Prueba
+storage/comprobantes/*
+!storage/comprobantes/.gitkeep
+
+# Sensitive Security Certificates (PFX / P12)
+*.pfx
+*.p12
+*.pem
+*.key
+*.cer
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.system_generated/
+
+# OS and IDE Files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
