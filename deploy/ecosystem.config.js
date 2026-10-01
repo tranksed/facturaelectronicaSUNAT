@@ -3,8 +3,7 @@ module.exports = {
     {
       name: 'facturador-sunat',
       script: 'server/src/index.js',
-      instances: 'max', // Utiliza todos los núcleos de CPU disponibles en el VPS
-      exec_mode: 'cluster',
+      instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',

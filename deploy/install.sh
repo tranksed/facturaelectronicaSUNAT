@@ -83,14 +83,15 @@ mkdir -p "$APP_DIR"
 
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Si estamos ejecutando dentro del repositorio clonado, copiamos o sincronizamos
-if [ -d "$CURRENT_DIR/server" ] && [ -d "$CURRENT_DIR/client" ]; then
-  echo "Copiando archivos desde el directorio actual..."
-  cp -r "$CURRENT_DIR"/* "$APP_DIR"/
-  cp -r "$CURRENT_DIR"/.* "$APP_DIR"/ 2>/dev/null || true
+# Si el script se ejecuta desde una ruta diferente, copiamos los archivos
+if [ "$CURRENT_DIR" != "$APP_DIR" ]; then
+  if [ -d "$CURRENT_DIR/server" ] && [ -d "$CURRENT_DIR/client" ]; then
+    echo "Copiando archivos desde $CURRENT_DIR hacia $APP_DIR..."
+    cp -r "$CURRENT_DIR"/* "$APP_DIR"/ 2>/dev/null || true
+    cp -r "$CURRENT_DIR"/.* "$APP_DIR"/ 2>/dev/null || true
+  fi
 else
-  echo -e "${YELLOW}Nota: No se detectó código local en la ruta del script.${NC}"
-  echo "Por favor asegúrate de haber clonado el repositorio de GitHub en $APP_DIR"
+  echo -e "Los archivos ya se encuentran en el directorio destino (${BOLD}$APP_DIR${NC})."
 fi
 
 cd "$APP_DIR"
@@ -101,10 +102,10 @@ mkdir -p logs
 mkdir -p server/prisma
 
 # 7. Configurar variables de entorno (.env)
-echo -e "\n${BLUE}🔐 Paso 5/8: Generando archivo de configuración server/.env...${NC}"
-JWT_SECRET_RANDOM=$(openssl rand -hex 32)
-
-cat <<EOF > server/.env
+echo -e "\n${BLUE}🔐 Paso 5/8: Configurando variables de entorno en server/.env...${NC}"
+if [ ! -f server/.env ]; then
+  JWT_SECRET_RANDOM=$(openssl rand -hex 32)
+  cat <<EOF > server/.env
 NODE_ENV=production
 PORT=3000
 APP_URL=https://${DOMAIN_NAME}
@@ -112,6 +113,10 @@ DATABASE_URL="file:./prod.db"
 JWT_SECRET=${JWT_SECRET_RANDOM}
 STORAGE_DIR=storage/comprobantes
 EOF
+  echo "Archivo server/.env creado con nueva clave JWT aleatoria."
+else
+  echo "Archivo server/.env existente detectado. Conservando configuración actual."
+fi
 
 # 8. Instalar dependencias y compilar
 echo -e "\n${BLUE}⚙️ Paso 6/8: Instalando dependencias del Backend y Frontend...${NC}"
@@ -119,6 +124,7 @@ cd "$APP_DIR/server"
 npm install --production=false
 npx prisma generate
 npx prisma db push
+node src/seed.js || true
 
 cd "$APP_DIR/client"
 npm install
