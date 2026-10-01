@@ -2,6 +2,7 @@
 # ==============================================================================
 # SCRIPT DE INSTALACIÓN Y DESPLIEGUE AUTOMATIZADO EN VPS (UBUNTU / DEBIAN)
 # Sistema de Facturación Electrónica SUNAT Multitenant & Marca Blanca
+# Soporte para Puertos Personalizados y Múltiples Métodos de SSL (Cloudflare / Let's Encrypt / Custom)
 # ==============================================================================
 
 set -e
@@ -25,31 +26,104 @@ echo -e "${NC}"
 # 1. Comprobar permisos de root
 if [ "$EUID" -ne 0 ]; then
   echo -e "${RED}❌ Este script debe ejecutarse con privilegios de superusuario (root).${NC}"
-  echo "Por favor ejecuta: sudo bash install.sh"
+  echo "Por favor ejecuta: sudo bash deploy/install.sh"
   exit 1
 fi
 
-# 2. Solicitar datos de configuración de dominio y correo
-echo -e "${CYAN}Ingresa los datos para la configuración de tu VPS y Certificado SSL:${NC}"
+APP_DIR="/var/www/facturador-sunat"
+
+# 2. Solicitar datos de configuración
+echo -e "${CYAN}--- Configuración de Dominio y Puertos ---${NC}"
 read -rp "👉 Ingresa tu Nombre de Dominio o Subdominio (ej: facturador.tudominio.com): " DOMAIN_NAME
 if [ -z "$DOMAIN_NAME" ]; then
   echo -e "${RED}❌ El nombre de dominio no puede estar vacío.${NC}"
   exit 1
 fi
 
-read -rp "👉 Ingresa tu Correo Electrónico (para notificaciones de SSL Let's Encrypt): " SSL_EMAIL
-if [ -z "$SSL_EMAIL" ]; then
-  echo -e "${RED}❌ El correo no puede estar vacío.${NC}"
-  exit 1
-fi
+read -rp "👉 Puerto interno de Node.js Express [Default: 3000]: " NODE_PORT
+NODE_PORT=${NODE_PORT:-3000}
 
-APP_DIR="/var/www/facturador-sunat"
+# 3. Menú de Métodos de SSL y Puertos
+echo ""
+echo -e "${CYAN}--- Selección del Método de SSL y Puerto Público ---${NC}"
+echo "  1) Let's Encrypt Automático (Certbot oficial en puertos estándar 80 / 443)"
+echo "  2) Cloudflare Proxy / Flexible SSL (Puerto estándar 80/443 o puerto alternativo ej: 8080, 8443, 2083)"
+echo "  3) Cloudflare Origin Certificate (Certificado cifrado de 15 años en puerto 443 o 8443)"
+echo "  4) Certificado SSL Propio / Comprado (.crt/.pem y .key)"
+echo "  5) Sin SSL / HTTP Directo (Para proxy inverso externo, Docker o red privada)"
+read -rp "👉 Selecciona una opción [1-5] (Default: 1): " SSL_OPTION
+SSL_OPTION=${SSL_OPTION:-1}
+
+PUBLIC_PORT=443
+SSL_MODE="LETSENCRYPT"
+SSL_EMAIL=""
+CUSTOM_CERT=""
+CUSTOM_KEY=""
+
+case "$SSL_OPTION" in
+  1)
+    PUBLIC_PORT=443
+    read -rp "👉 Ingresa tu Correo Electrónico para Let's Encrypt: " SSL_EMAIL
+    if [ -z "$SSL_EMAIL" ]; then SSL_EMAIL="admin@${DOMAIN_NAME}"; fi
+    SSL_MODE="LETSENCRYPT"
+    APP_URL="https://${DOMAIN_NAME}"
+    ;;
+  2)
+    echo -e "${YELLOW}Puertos compatibles con Cloudflare Proxy:${NC}"
+    echo -e "  HTTPS: 443, 8443, 2053, 2083, 2087, 2096 | HTTP: 80, 8080, 8880, 2052, 2082, 2086, 2095"
+    read -rp "👉 Ingresa el puerto público en Nginx para Cloudflare [Default: 80]: " PUBLIC_PORT
+    PUBLIC_PORT=${PUBLIC_PORT:-80}
+    SSL_MODE="CLOUDFLARE_FLEXIBLE"
+    if [ "$PUBLIC_PORT" = "80" ] || [ "$PUBLIC_PORT" = "443" ]; then
+      APP_URL="https://${DOMAIN_NAME}"
+    else
+      APP_URL="https://${DOMAIN_NAME}:${PUBLIC_PORT}"
+    fi
+    ;;
+  3)
+    read -rp "👉 Ingresa el puerto público HTTPS en Nginx [Default: 443 o 8443]: " PUBLIC_PORT
+    PUBLIC_PORT=${PUBLIC_PORT:-443}
+    SSL_MODE="CLOUDFLARE_ORIGIN"
+    CUSTOM_CERT="/etc/ssl/cloudflare-origin.crt"
+    CUSTOM_KEY="/etc/ssl/cloudflare-origin.key"
+    if [ "$PUBLIC_PORT" = "443" ]; then
+      APP_URL="https://${DOMAIN_NAME}"
+    else
+      APP_URL="https://${DOMAIN_NAME}:${PUBLIC_PORT}"
+    fi
+    ;;
+  4)
+    read -rp "👉 Ingresa el puerto público HTTPS en Nginx [Default: 443 o 8443]: " PUBLIC_PORT
+    PUBLIC_PORT=${PUBLIC_PORT:-443}
+    read -rp "👉 Ruta absoluta al archivo de Certificado (.crt o .pem): " CUSTOM_CERT
+    read -rp "👉 Ruta absoluta al archivo de Clave Privada (.key): " CUSTOM_KEY
+    SSL_MODE="CUSTOM_SSL"
+    if [ "$PUBLIC_PORT" = "443" ]; then
+      APP_URL="https://${DOMAIN_NAME}"
+    else
+      APP_URL="https://${DOMAIN_NAME}:${PUBLIC_PORT}"
+    fi
+    ;;
+  5)
+    read -rp "👉 Ingresa el puerto público HTTP en Nginx [Default: 8080]: " PUBLIC_PORT
+    PUBLIC_PORT=${PUBLIC_PORT:-8080}
+    SSL_MODE="HTTP_ONLY"
+    if [ "$PUBLIC_PORT" = "80" ]; then
+      APP_URL="http://${DOMAIN_NAME}"
+    else
+      APP_URL="http://${DOMAIN_NAME}:${PUBLIC_PORT}"
+    fi
+    ;;
+esac
 
 echo ""
 echo -e "${YELLOW}Resumen de Configuración:${NC}"
-echo -e " • Dominio:        ${BOLD}${DOMAIN_NAME}${NC}"
-echo -e " • Email SSL:      ${BOLD}${SSL_EMAIL}${NC}"
-echo -e " • Ruta en el VPS: ${BOLD}${APP_DIR}${NC}"
+echo -e " • Dominio:           ${BOLD}${DOMAIN_NAME}${NC}"
+echo -e " • URL Pública:       ${BOLD}${APP_URL}${NC}"
+echo -e " • Puerto Nginx:      ${BOLD}${PUBLIC_PORT}${NC}"
+echo -e " • Puerto Node.js:    ${BOLD}${NODE_PORT}${NC}"
+echo -e " • Método SSL:        ${BOLD}${SSL_MODE}${NC}"
+echo -e " • Ruta en el VPS:    ${BOLD}${APP_DIR}${NC}"
 echo ""
 read -rp "¿Deseas continuar con la instalación? (s/n): " CONFIRM
 if [[ ! "$CONFIRM" =~ ^[sS]$ ]]; then
@@ -57,12 +131,16 @@ if [[ ! "$CONFIRM" =~ ^[sS]$ ]]; then
   exit 0
 fi
 
-# 3. Actualizar paquetes del sistema
+# 4. Actualizar paquetes del sistema
 echo -e "\n${BLUE}📦 Paso 1/8: Actualizando paquetes del sistema...${NC}"
 apt update && apt upgrade -y
-apt install -y curl wget git build-essential ufw nginx certbot python3-certbot-nginx
+apt install -y curl wget git build-essential ufw nginx
 
-# 4. Instalar Node.js 20 LTS (si no está instalado o versión anterior)
+if [ "$SSL_MODE" = "LETSENCRYPT" ]; then
+  apt install -y certbot python3-certbot-nginx
+fi
+
+# 5. Instalar Node.js 20 LTS (si no está instalado o versión anterior)
 echo -e "\n${BLUE}🟢 Paso 2/8: Verificando e instalando Node.js 20 LTS...${NC}"
 if ! command -v node >/dev/null 2>&1 || [[ $(node -v | cut -d'.' -f1 | sed 's/v//') -lt 20 ]]; then
   echo "Instalando Node.js 20 desde NodeSource..."
@@ -73,17 +151,16 @@ fi
 echo -e "Node.js instalado: ${GREEN}$(node -v)${NC}"
 echo -e "NPM instalado:     ${GREEN}$(npm -v)${NC}"
 
-# 5. Instalar PM2 para gestión de procesos en segundo plano
+# 6. Instalar PM2 para gestión de procesos en segundo plano
 echo -e "\n${BLUE}⚡ Paso 3/8: Instalando PM2 Process Manager...${NC}"
 npm install -g pm2
 
-# 6. Preparar directorio del proyecto
+# 7. Preparar directorio del proyecto
 echo -e "\n${BLUE}📂 Paso 4/8: Preparando archivos de la aplicación en ${APP_DIR}...${NC}"
 mkdir -p "$APP_DIR"
 
 CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-# Si el script se ejecuta desde una ruta diferente, copiamos los archivos
 if [ "$CURRENT_DIR" != "$APP_DIR" ]; then
   if [ -d "$CURRENT_DIR/server" ] && [ -d "$CURRENT_DIR/client" ]; then
     echo "Copiando archivos desde $CURRENT_DIR hacia $APP_DIR..."
@@ -96,29 +173,25 @@ fi
 
 cd "$APP_DIR"
 
-# Crear directorios para almacenamiento persistente y logs
 mkdir -p storage/comprobantes
 mkdir -p logs
 mkdir -p server/prisma
 
-# 7. Configurar variables de entorno (.env)
+# 8. Configurar variables de entorno (.env)
 echo -e "\n${BLUE}🔐 Paso 5/8: Configurando variables de entorno en server/.env...${NC}"
-if [ ! -f server/.env ]; then
-  JWT_SECRET_RANDOM=$(openssl rand -hex 32)
-  cat <<EOF > server/.env
+JWT_SECRET_RANDOM=$(openssl rand -hex 32)
+
+cat <<EOF > server/.env
 NODE_ENV=production
-PORT=3000
-APP_URL=https://${DOMAIN_NAME}
+PORT=${NODE_PORT}
+APP_URL=${APP_URL}
 DATABASE_URL="file:./prod.db"
 JWT_SECRET=${JWT_SECRET_RANDOM}
 STORAGE_DIR=storage/comprobantes
 EOF
-  echo "Archivo server/.env creado con nueva clave JWT aleatoria."
-else
-  echo "Archivo server/.env existente detectado. Conservando configuración actual."
-fi
+echo "Archivo server/.env configurado con puerto ${NODE_PORT} y URL ${APP_URL}."
 
-# 8. Instalar dependencias y compilar
+# 9. Instalar dependencias y compilar
 echo -e "\n${BLUE}⚙️ Paso 6/8: Instalando dependencias del Backend y Frontend...${NC}"
 cd "$APP_DIR/server"
 npm install --production=false
@@ -130,18 +203,23 @@ cd "$APP_DIR/client"
 npm install
 npm run build
 
-# 9. Configurar Nginx y Certificado SSL
-echo -e "\n${BLUE}🌐 Paso 7/8: Configurando Nginx y Certificado SSL Let's Encrypt...${NC}"
+# 10. Configurar Nginx
+echo -e "\n${BLUE}🌐 Paso 7/8: Configurando servidor web Nginx (Puerto ${PUBLIC_PORT})...${NC}"
 
-# Configuración Nginx inicial (HTTP temporal para validación Let's Encrypt)
-cat <<EOF > /etc/nginx/sites-available/facturador-sunat
+NGINX_CONF="/etc/nginx/sites-available/facturador-sunat"
+
+if [ "$SSL_MODE" = "LETSENCRYPT" ]; then
+  # Plantilla inicial HTTP para validación de Certbot
+  cat <<EOF > "$NGINX_CONF"
 server {
     listen 80;
     listen [::]:80;
     server_name ${DOMAIN_NAME};
 
+    client_max_body_size 25M;
+
     location / {
-        proxy_pass http://127.0.0.1:3000;
+        proxy_pass http://127.0.0.1:${NODE_PORT};
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection 'upgrade';
@@ -154,29 +232,128 @@ server {
 }
 EOF
 
-ln -sf /etc/nginx/sites-available/facturador-sunat /etc/nginx/sites-enabled/
-rm -f /etc/nginx/sites-enabled/default
-nginx -t && systemctl reload nginx
+  ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
+  rm -f /etc/nginx/sites-enabled/default
+  nginx -t && systemctl reload nginx
 
-# Obtención de certificado SSL con Certbot
-echo "Solicitando certificado SSL a Let's Encrypt..."
-certbot --nginx -d "$DOMAIN_NAME" --non-interactive --agree-tos -m "$SSL_EMAIL" --redirect || {
-  echo -e "${YELLOW}⚠️ Aviso: No se pudo emitir el certificado SSL automáticamente.${NC}"
-  echo "Asegúrate de que tu dominio '$DOMAIN_NAME' ya apunte a la IP de este VPS en tu proveedor DNS (Cloudflare, GoDaddy, etc)."
-  echo "Podrás reintentar SSL más adelante con: certbot --nginx -d $DOMAIN_NAME"
+  echo "Solicitando certificado SSL a Let's Encrypt..."
+  certbot --nginx -d "$DOMAIN_NAME" --non-interactive --agree-tos -m "$SSL_EMAIL" --redirect || {
+    echo -e "${YELLOW}⚠️ Aviso: No se pudo emitir el certificado SSL automáticamente.${NC}"
+    echo "Asegúrate de que tu dominio '$DOMAIN_NAME' apunte a la IP de este VPS en tu proveedor DNS."
+    echo "Podrás reintentar SSL con: certbot --nginx -d $DOMAIN_NAME"
+  }
+
+elif [ "$SSL_MODE" = "CLOUDFLARE_ORIGIN" ] || [ "$SSL_MODE" = "CUSTOM_SSL" ]; then
+  # Si es Cloudflare Origin y no existen los archivos, crearlos con plantilla
+  if [ "$SSL_MODE" = "CLOUDFLARE_ORIGIN" ] && [ ! -f "$CUSTOM_CERT" ]; then
+    echo -e "${YELLOW}Creando archivos vacíos para Cloudflare Origin Certificate:${NC}"
+    echo -e "  Certificado: $CUSTOM_CERT"
+    echo -e "  Clave:       $CUSTOM_KEY"
+    touch "$CUSTOM_CERT" "$CUSTOM_KEY"
+    chmod 600 "$CUSTOM_KEY"
+    echo -e "${CYAN}Nota: Recuerda pegar tu certificado y clave de Cloudflare en esos archivos.${NC}"
+  fi
+
+  cat <<EOF > "$NGINX_CONF"
+server {
+    listen ${PUBLIC_PORT} ssl http2;
+    listen [::]:${PUBLIC_PORT} ssl http2;
+    server_name ${DOMAIN_NAME};
+
+    client_max_body_size 25M;
+
+    ssl_certificate ${CUSTOM_CERT};
+    ssl_certificate_key ${CUSTOM_KEY};
+
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    location / {
+        proxy_pass http://127.0.0.1:${NODE_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
 }
+EOF
 
-# 10. Iniciar aplicación con PM2
+  ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
+  rm -f /etc/nginx/sites-enabled/default
+  nginx -t && systemctl reload nginx
+
+else
+  # Modo HTTP Directo o Cloudflare Flexible
+  cat <<EOF > "$NGINX_CONF"
+server {
+    listen ${PUBLIC_PORT};
+    listen [::]:${PUBLIC_PORT};
+    server_name ${DOMAIN_NAME};
+
+    client_max_body_size 25M;
+
+    location / {
+        proxy_pass http://127.0.0.1:${NODE_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \$host;
+        proxy_cache_bypass \$http_upgrade;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \$scheme;
+    }
+}
+EOF
+
+  ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/
+  rm -f /etc/nginx/sites-enabled/default
+  nginx -t && systemctl reload nginx
+fi
+
+# 11. Iniciar aplicación con PM2
 echo -e "\n${BLUE}🚀 Paso 8/8: Iniciando la aplicación con PM2 y configurando arranque automático...${NC}"
 cd "$APP_DIR"
+
+# Actualizar puerto en ecosystem si cambió
+cat <<EOF > deploy/ecosystem.config.js
+module.exports = {
+  apps: [
+    {
+      name: 'facturador-sunat',
+      script: 'server/src/index.js',
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '1G',
+      env: {
+        NODE_ENV: 'production',
+        PORT: ${NODE_PORT}
+      },
+      error_file: 'logs/pm2-err.log',
+      out_file: 'logs/pm2-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss Z',
+      merge_logs: true
+    }
+  ]
+};
+EOF
+
 pm2 delete facturador-sunat 2>/dev/null || true
 pm2 start deploy/ecosystem.config.js
 pm2 save
 pm2 startup systemd -u root --hp /root || true
 
-# Configurar Firewall UFW
+# 12. Configurar Firewall UFW
 ufw allow OpenSSH
-ufw allow 'Nginx Full'
+ufw allow "${PUBLIC_PORT}/tcp"
+if [ "$PUBLIC_PORT" != "80" ] && [ "$SSL_MODE" = "LETSENCRYPT" ]; then
+  ufw allow 80/tcp
+fi
 ufw --force enable
 
 echo -e "\n${GREEN}${BOLD}"
@@ -184,19 +361,19 @@ echo "==========================================================================
 echo "    🎉 ¡INSTALACIÓN COMPLETADA EXITOSAMENTE! SISTEMA LISTO PARA PRODUCCIÓN   "
 echo "=============================================================================="
 echo -e "${NC}"
-echo -e "📍 URL de tu Plataforma:  ${CYAN}https://${DOMAIN_NAME}${NC}"
-echo -e "📁 Directorio en el VPS:  ${BOLD}${APP_DIR}${NC}"
-echo -e "💾 Almacenamiento Local:  ${BOLD}${APP_DIR}/storage/comprobantes${NC}"
+echo -e "📍 URL de tu Plataforma:   ${CYAN}${APP_URL}${NC}"
+echo -e "🌐 Puerto Público Nginx:   ${BOLD}${PUBLIC_PORT}${NC}"
+echo -e "⚡ Puerto Interno Node.js: ${BOLD}${NODE_PORT}${NC}"
+echo -e "🔒 Modo SSL:               ${BOLD}${SSL_MODE}${NC}"
+echo -e "📁 Directorio en el VPS:   ${BOLD}${APP_DIR}${NC}"
 echo ""
 echo -e "${BOLD}🔑 Accesos Iniciales de Super Administrador:${NC}"
 echo -e " • Usuario:    ${CYAN}admin@facturador.com${NC}"
 echo -e " • Contraseña: ${CYAN}Admin12345*${NC}"
-echo -e " *(Recuerda cambiar la contraseña inmediatamente tras iniciar sesión)*"
 echo ""
-echo -e "${BOLD}Comandos útiles de gestión en tu VPS:${NC}"
+echo -e "${BOLD}Comandos útiles de gestión:${NC}"
 echo " • Ver estado del servicio:     pm2 status"
-echo " • Ver logs en tiempo real:     pm2 logs facturador-sunat"
+echo " • Ver logs en vivo:            pm2 logs facturador-sunat"
 echo " • Reiniciar el sistema:        pm2 restart facturador-sunat"
-echo " • Actualizar con git pull:     cd ${APP_DIR} && git pull && pm2 reload facturador-sunat"
+echo " • Probar configuración Nginx:  nginx -t && systemctl reload nginx"
 echo ""
-EOF

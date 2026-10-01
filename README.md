@@ -142,11 +142,12 @@ facturacion-telegram-sunat/
  │    │    ├── routes/        # Endpoints modulares (Auth, Companies, SuperAdmin)
  │    │    └── services/      # Generador UBL 2.1, Firmador XML, Cliente SUNAT y Storage S3
  ├── deploy/                  # Archivos para puesta en producción
- │    ├── install.sh          # Script de despliegue automático en 1 comando
+ │    ├── install.sh          # Script de despliegue automático con soporte multi-puerto y SSL
  │    ├── nginx.conf          # Plantilla Nginx con Reverse Proxy y SSL
  │    └── ecosystem.config.js # Configuración PM2 en modo cluster
  ├── storage/                 # Directorio local de comprobantes (preservado con .gitkeep)
  ├── MANUAL_PRODUCCION_VPS.md # Guía exhaustiva de despliegue y dimensionamiento
+ ├── MANUAL_CLOUDFLARE.md     # Guía oficial de integración con Cloudflare y SSL
  └── README.md                # Presentación oficial del proyecto
 ```
 
