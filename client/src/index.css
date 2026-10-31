@@ -1637,6 +1637,100 @@ input:checked + .slider:before {
   padding: 0 4px;
 }
 
+/* Registration Promo & Benefits */
+.login-register-promo-card {
+  margin-top: 20px;
+  padding: 16px;
+  background: var(--bg-card-subtle);
+  border: 1px dashed var(--border-color);
+  border-radius: 10px;
+  text-align: left;
+  transition: var(--transition);
+}
+
+.login-register-promo-card:hover {
+  border-color: var(--primary);
+}
+
+.register-promo-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.promo-badge {
+  font-size: 10.5px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--primary);
+  display: inline-block;
+}
+
+.promo-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.promo-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+  margin: 0 0 12px 0;
+}
+
+.btn-promo-register {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  font-family: var(--font-family);
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: var(--transition);
+  text-align: center;
+}
+
+.btn-promo-register:hover {
+  background: var(--primary);
+  color: white;
+}
+
+.register-benefits-box {
+  background: var(--primary-subtle);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.register-benefit-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.register-benefit-item strong {
+  color: var(--primary);
+}
+
+.benefit-dot {
+  font-size: 14px;
+  line-height: 1;
+}
+
 /* Utilities */
 .flex-between {
   display: flex;

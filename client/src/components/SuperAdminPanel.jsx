@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AdminResetPasswordModal from './AdminResetPasswordModal';
+import AdminEditUserModal from './AdminEditUserModal';
+import AdminDeleteUserModal from './AdminDeleteUserModal';
 import {
   IconShield,
   IconUser,
@@ -12,7 +14,9 @@ import {
   IconArchive,
   IconFileText,
   IconCode,
-  IconKey
+  IconKey,
+  IconEdit,
+  IconTrash
 } from './Icons';
 
 export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated }) {
@@ -57,6 +61,10 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
   const [activeAdminSubTab, setActiveAdminSubTab] = useState('users'); // 'users' | 'whitelabel' | 'storage'
   const [selectedUserForPassword, setSelectedUserForPassword] = useState(null);
   const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
+  const [selectedUserForEdit, setSelectedUserForEdit] = useState(null);
+  const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
+  const [selectedUserForDelete, setSelectedUserForDelete] = useState(null);
+  const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -434,7 +442,23 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
                       </span>
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', gap: '5px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {/* Editar Datos */}
+                        <button
+                          type="button"
+                          className="btn-sm btn-secondary"
+                          onClick={() => {
+                            setSelectedUserForEdit(u);
+                            setIsEditUserModalOpen(true);
+                          }}
+                          title="Editar nombre, correo o rol de la cuenta"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '4px 8px' }}
+                        >
+                          <IconEdit size={12} />
+                          <span>Editar</span>
+                        </button>
+
+                        {/* Cambiar / Restablecer Clave */}
                         <button
                           type="button"
                           className="btn-sm btn-outline-primary"
@@ -443,19 +467,39 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
                             setIsResetPasswordModalOpen(true);
                           }}
                           title="Asignar o restablecer contraseña a esta cuenta"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '4px 8px' }}
                         >
                           <IconKey size={12} />
-                          <span>Contraseña</span>
+                          <span>Clave</span>
                         </button>
+
+                        {/* Suspender o Reactivar */}
                         {u.role !== 'SUPERADMIN' ? (
                           <button
                             type="button"
                             className={`btn-sm ${u.status === 'ACTIVE' ? 'btn-danger-outline' : 'btn-outline-cyan'}`}
                             onClick={() => handleToggleUserStatus(u)}
                             title={u.status === 'ACTIVE' ? 'Suspender acceso a este usuario' : 'Reactivar acceso'}
+                            style={{ padding: '4px 8px' }}
                           >
                             {u.status === 'ACTIVE' ? 'Suspender' : 'Reactivar'}
+                          </button>
+                        ) : null}
+
+                        {/* Eliminar Usuario */}
+                        {u.role !== 'SUPERADMIN' ? (
+                          <button
+                            type="button"
+                            className="btn-sm btn-danger-outline"
+                            onClick={() => {
+                              setSelectedUserForDelete(u);
+                              setIsDeleteUserModalOpen(true);
+                            }}
+                            title="Eliminar permanentemente este usuario y sus empresas"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '4px 8px' }}
+                          >
+                            <IconTrash size={12} />
+                            <span>Eliminar</span>
                           </button>
                         ) : null}
                       </div>
@@ -1008,6 +1052,38 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
           setSelectedUserForPassword(null);
         }}
         user={selectedUserForPassword}
+        API_URL={API_URL}
+        authToken={authToken}
+        onSuccess={(msg) => {
+          showMsg(msg, 'success');
+          loadData();
+        }}
+      />
+
+      {/* Admin Edit User Modal */}
+      <AdminEditUserModal
+        isOpen={isEditUserModalOpen}
+        onClose={() => {
+          setIsEditUserModalOpen(false);
+          setSelectedUserForEdit(null);
+        }}
+        user={selectedUserForEdit}
+        API_URL={API_URL}
+        authToken={authToken}
+        onSuccess={(msg) => {
+          showMsg(msg, 'success');
+          loadData();
+        }}
+      />
+
+      {/* Admin Delete User Modal */}
+      <AdminDeleteUserModal
+        isOpen={isDeleteUserModalOpen}
+        onClose={() => {
+          setIsDeleteUserModalOpen(false);
+          setSelectedUserForDelete(null);
+        }}
+        user={selectedUserForDelete}
         API_URL={API_URL}
         authToken={authToken}
         onSuccess={(msg) => {

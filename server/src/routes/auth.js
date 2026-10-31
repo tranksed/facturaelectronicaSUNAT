@@ -25,6 +25,10 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Nombre, correo electrónico y contraseña son obligatorios.' });
     }
 
+    if (password.length < 6) {
+      return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres.' });
+    }
+
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ error: 'Ya existe una cuenta registrada con este correo electrónico.' });

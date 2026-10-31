@@ -158,6 +158,107 @@ router.put('/users/:id/password', async (req, res) => {
 });
 
 /**
+ * PUT /api/superadmin/users/:id
+ * Allows SuperAdmin to update user profile (name, email, role, status).
+ */
+router.put('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, role, status } = req.body;
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id }
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    if (email && email.trim() !== targetUser.email) {
+      const emailExists = await prisma.user.findUnique({
+        where: { email: email.trim() }
+      });
+      if (emailExists) {
+        return res.status(400).json({ error: 'Ya existe otra cuenta con este correo electrónico.' });
+      }
+    }
+
+    if (req.user.id === id) {
+      if (role && role !== 'SUPERADMIN') {
+        return res.status(400).json({ error: 'No puedes degradar tu propia cuenta de Super Administrador.' });
+      }
+      if (status && status !== 'ACTIVE') {
+        return res.status(400).json({ error: 'No puedes suspender tu propia cuenta de Super Administrador.' });
+      }
+    }
+
+    const dataToUpdate = {};
+    if (name) dataToUpdate.name = name.trim();
+    if (email) dataToUpdate.email = email.trim();
+    if (role && ['USER', 'SUPERADMIN'].includes(role)) dataToUpdate.role = role;
+    if (status && ['ACTIVE', 'SUSPENDED'].includes(status)) dataToUpdate.status = status;
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: dataToUpdate
+    });
+
+    res.json({
+      success: true,
+      message: `Cuenta de "${updatedUser.name}" actualizada exitosamente.`,
+      user: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        status: updatedUser.status
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al actualizar usuario: ' + error.message });
+  }
+});
+
+/**
+ * DELETE /api/superadmin/users/:id
+ * Allows SuperAdmin to delete a tenant user and all their associated companies and invoices.
+ */
+router.delete('/users/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (req.user.id === id) {
+      return res.status(400).json({ error: 'No puedes eliminar tu propia cuenta de Super Administrador activa.' });
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        companies: {
+          select: { id: true, ruc: true, razonSocial: true }
+        }
+      }
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    // Cascade delete user
+    await prisma.user.delete({
+      where: { id }
+    });
+
+    res.json({
+      success: true,
+      message: `Cuenta de "${targetUser.name || targetUser.email}" y sus ${targetUser.companies.length} empresa(s) han sido eliminadas permanentemente.`
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al eliminar usuario: ' + error.message });
+  }
+});
+
+/**
  * GET /api/superadmin/white-label
  * Gets global white-label settings.
  */
