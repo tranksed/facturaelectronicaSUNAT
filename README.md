@@ -87,6 +87,26 @@ El script configurará automáticamente:
 
 ---
 
+## 🇵🇪 Guía de Sincronización con SUNAT (¿De dónde obtener los datos?)
+
+Para que una empresa emita comprobantes con valor fiscal real directo a SUNAT, debe ingresar 3 elementos clave en el menú **🏢 Mi Empresa**:
+
+1. **Certificado Digital Tributario (`.pfx` / `.p12`):**
+   * **Gratuito (Mypes):** Si estás en Régimen Mype, Especial o General con ventas menores a 300 UIT anuales, solicítalo gratis en SUNAT SOL:
+     👉 *Empresas > Comprobantes de Pago > Certificado Digital Tributario - CDT > Solicitar CDT*.
+   * **Comercial:** Adquiérelo con proveedores INDECOPI (*Reniec, Llama.pe, Camerfirma, Avansi*) y regístralo en SUNAT SOL.
+2. **Usuario Secundario SOL y Clave SOL:**
+   * SUNAT prohíbe usar la clave principal del representante legal para emitir.
+   * Créalo en SUNAT SOL: *Menú superior derecho > Administración de Usuarios Secundarios > Crear Usuario*.
+   * Asigna los permisos en: *Tributarios > Comprobantes de Pago > SEE - Desde los Sistemas del Contribuyente* (Factura, Boleta, Notas, Consultas).
+3. **Entorno de Emisión:**
+   * **Beta:** Usa `MODDATOS` / `moddatos` para pruebas sin impacto tributario.
+   * **Producción:** Usa tu usuario secundario y certificado real para comprobantes con plena validez legal.
+
+> 📖 **Manual Detallado Paso a Paso:** Consulta la guía completa con capturas de pantalla, rutas de menú y solución a errores de SUNAT en [MANUAL_INTEGRACION_SUNAT.md](MANUAL_INTEGRACION_SUNAT.md). También puedes abrir la guía interactiva dentro del sistema con el botón **"📖 ¿Cómo obtener estos datos? (Guía SUNAT)"** en la pantalla de *Mi Empresa*.
+
+---
+
 ## 💻 Instalación y Desarrollo Local
 
 ### 1. Requisitos:
@@ -146,6 +166,7 @@ facturacion-telegram-sunat/
  │    ├── nginx.conf          # Plantilla Nginx con Reverse Proxy y SSL
  │    └── ecosystem.config.js # Configuración PM2 en modo cluster
  ├── storage/                 # Directorio local de comprobantes (preservado con .gitkeep)
+ ├── MANUAL_INTEGRACION_SUNAT.md # Guía paso a paso: Certificado Digital y Usuario Secundario SOL
  ├── MANUAL_PRODUCCION_VPS.md # Guía exhaustiva de despliegue y dimensionamiento
  ├── MANUAL_CLOUDFLARE.md     # Guía oficial de integración con Cloudflare y SSL
  └── README.md                # Presentación oficial del proyecto

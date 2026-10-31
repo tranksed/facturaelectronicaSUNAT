@@ -297,3 +297,17 @@ sudo systemctl status nginx
 # Renovar certificado SSL manualmente (se renueva automáticamente)
 sudo certbot renew --dry-run
 ```
+
+---
+
+## 🇵🇪 7. Sincronización con SUNAT y Obtención de Credenciales
+
+Para que cada empresa cliente empiece a emitir comprobantes legales a través de tu VPS:
+1. Necesitará su **Certificado Digital Tributario (.pfx / .p12)** y su **Usuario Secundario SOL** con permisos de facturación.
+2. Consulta el manual oficial detallado paso a paso incluido en este repositorio:
+   👉 **[`MANUAL_INTEGRACION_SUNAT.md`](MANUAL_INTEGRACION_SUNAT.md)**
+3. En la consola de tu VPS puedes leerlo en cualquier momento ejecutando:
+   ```bash
+   cat /var/www/facturador-sunat/MANUAL_INTEGRACION_SUNAT.md | less
+   ```
+4. Los clientes también tienen acceso interactivo a esta guía directamente desde la web en la pestaña **Mi Empresa** haciendo clic en **"📖 ¿Cómo obtener estos datos? (Guía SUNAT)"**.

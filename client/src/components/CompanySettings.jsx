@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import SunatGuideModal from './SunatGuideModal';
 import {
   IconBuilding,
   IconCreditCard,
@@ -16,6 +17,7 @@ export default function CompanySettings({ activeCompany, API_URL, authToken, onC
   const [loading, setLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [showSunatGuide, setShowSunatGuide] = useState(false);
   const [message, setMessage] = useState(null); // { text, type }
 
   // Empresa profile state
@@ -581,13 +583,26 @@ export default function CompanySettings({ activeCompany, API_URL, authToken, onC
 
           {/* SUNAT CREDENTIALS & CERTIFICATE */}
           <div style={{ paddingTop: '18px', borderTop: '1px solid var(--border-color)' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <IconShield size={18} />
-              <span>Credenciales SUNAT y Certificado Digital</span>
-            </h3>
-            <p className="field-hint" style={{ marginBottom: '14px' }}>
-              Firma digital UBL 2.1 directa y conexión al Web Service de SUNAT sin intermediarios.
-            </p>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '14px' }}>
+              <div>
+                <h3 style={{ fontSize: '15px', fontWeight: 700, margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <IconShield size={18} />
+                  <span>Credenciales SUNAT y Certificado Digital</span>
+                </h3>
+                <p className="field-hint" style={{ margin: 0 }}>
+                  Firma digital UBL 2.1 directa y conexión al Web Service de SUNAT sin intermediarios.
+                </p>
+              </div>
+              <button 
+                type="button" 
+                className="btn btn-secondary btn-sm"
+                onClick={() => setShowSunatGuide(true)}
+                style={{ borderColor: 'var(--cyan)', color: 'var(--cyan)', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+                title="Ver guía paso a paso para obtener Certificado Digital y Usuario Secundario SOL"
+              >
+                <span>📖 ¿Cómo obtener estos datos? (Guía SUNAT)</span>
+              </button>
+            </div>
 
             <div className="settings-fields-grid">
               <div className="settings-field">
@@ -895,6 +910,12 @@ export default function CompanySettings({ activeCompany, API_URL, authToken, onC
           </div>
         </div>
       </form>
+
+      {/* SUNAT Step-by-Step Guide Modal */}
+      <SunatGuideModal 
+        isOpen={showSunatGuide} 
+        onClose={() => setShowSunatGuide(false)} 
+      />
     </div>
   );
 }
