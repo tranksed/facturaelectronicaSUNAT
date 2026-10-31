@@ -3,6 +3,7 @@ import LoginModal from './components/LoginModal';
 import CompanyModal from './components/CompanyModal';
 import CompanySettings from './components/CompanySettings';
 import SuperAdminPanel from './components/SuperAdminPanel';
+import ChangePasswordModal from './components/ChangePasswordModal';
 import {
   IconDashboard,
   IconInvoice,
@@ -22,7 +23,8 @@ import {
   IconCreditCard,
   IconSettings,
   IconCode,
-  IconArchive
+  IconArchive,
+  IconKey
 } from './components/Icons';
 
 // Setup API endpoint (points to Express server on Port 3000 in dev)
@@ -50,6 +52,7 @@ export default function App() {
   const [companies, setCompanies] = useState([]);
   const [activeCompany, setActiveCompany] = useState(null);
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
 
   // Platform White-Label Branding
   const [branding, setBranding] = useState({
@@ -535,6 +538,16 @@ export default function App() {
         authToken={authToken}
       />
 
+      {/* 3. Change Password Modal (Self-service for logged-in user / SuperAdmin) */}
+      <ChangePasswordModal
+        isOpen={isChangePasswordModalOpen}
+        onClose={() => setIsChangePasswordModalOpen(false)}
+        API_URL={API_URL}
+        authToken={authToken}
+        currentUser={currentUser}
+        onSuccess={(msg) => showMsg(msg, 'success')}
+      />
+
       {/* Sidebar Navigation */}
       <aside className="sidebar">
         <div className="sidebar-top">
@@ -685,6 +698,15 @@ export default function App() {
                   {currentUser.role === 'SUPERADMIN' ? 'Admin' : 'Cliente'}
                 </span>
                 <span style={{ fontWeight: 600 }}>{currentUser.name || currentUser.email}</span>
+                <button 
+                  type="button" 
+                  className="btn-user-action" 
+                  onClick={() => setIsChangePasswordModalOpen(true)}
+                  title="Cambiar mi contraseña de acceso"
+                >
+                  <IconKey size={13} />
+                  <span>Contraseña</span>
+                </button>
                 <button 
                   type="button" 
                   className="btn-logout" 

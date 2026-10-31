@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AdminResetPasswordModal from './AdminResetPasswordModal';
 import {
   IconShield,
   IconUser,
@@ -10,7 +11,8 @@ import {
   IconServer,
   IconArchive,
   IconFileText,
-  IconCode
+  IconCode,
+  IconKey
 } from './Icons';
 
 export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated }) {
@@ -53,6 +55,8 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
   const [testingS3, setTestingS3] = useState(false);
   const [message, setMessage] = useState(null); // { text, type }
   const [activeAdminSubTab, setActiveAdminSubTab] = useState('users'); // 'users' | 'whitelabel' | 'storage'
+  const [selectedUserForPassword, setSelectedUserForPassword] = useState(null);
+  const [isResetPasswordModalOpen, setIsResetPasswordModalOpen] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -430,17 +434,31 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
                       </span>
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      {u.role !== 'SUPERADMIN' ? (
+                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
                         <button
                           type="button"
-                          className={`btn-sm ${u.status === 'ACTIVE' ? 'btn-danger-outline' : 'btn-outline-cyan'}`}
-                          onClick={() => handleToggleUserStatus(u)}
+                          className="btn-sm btn-outline-primary"
+                          onClick={() => {
+                            setSelectedUserForPassword(u);
+                            setIsResetPasswordModalOpen(true);
+                          }}
+                          title="Asignar o restablecer contraseña a esta cuenta"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                         >
-                          {u.status === 'ACTIVE' ? 'Suspender' : 'Reactivar'}
+                          <IconKey size={12} />
+                          <span>Contraseña</span>
                         </button>
-                      ) : (
-                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Inmutable</span>
-                      )}
+                        {u.role !== 'SUPERADMIN' ? (
+                          <button
+                            type="button"
+                            className={`btn-sm ${u.status === 'ACTIVE' ? 'btn-danger-outline' : 'btn-outline-cyan'}`}
+                            onClick={() => handleToggleUserStatus(u)}
+                            title={u.status === 'ACTIVE' ? 'Suspender acceso a este usuario' : 'Reactivar acceso'}
+                          >
+                            {u.status === 'ACTIVE' ? 'Suspender' : 'Reactivar'}
+                          </button>
+                        ) : null}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -981,6 +999,22 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
 
         </div>
       )}
+
+      {/* Admin Reset Password Modal */}
+      <AdminResetPasswordModal
+        isOpen={isResetPasswordModalOpen}
+        onClose={() => {
+          setIsResetPasswordModalOpen(false);
+          setSelectedUserForPassword(null);
+        }}
+        user={selectedUserForPassword}
+        API_URL={API_URL}
+        authToken={authToken}
+        onSuccess={(msg) => {
+          showMsg(msg, 'success');
+          loadData();
+        }}
+      />
     </div>
   );
 }

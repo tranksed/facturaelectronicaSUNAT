@@ -209,4 +209,50 @@ router.get('/me', authenticateToken, async (req, res) => {
   }
 });
 
+/**
+ * PUT /api/auth/change-password
+ * Allows the currently authenticated user (SuperAdmin or Tenant) to change their password.
+ */
+router.put('/change-password', authenticateToken, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Debes ingresar tu contraseña actual y la nueva contraseña.' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+    }
+
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    const isMatch = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'La contraseña actual ingresada es incorrecta.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword, salt);
+
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: { passwordHash }
+    });
+
+    res.json({
+      success: true,
+      message: '¡Contraseña actualizada exitosamente!'
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al cambiar la contraseña: ' + error.message });
+  }
+});
+
 module.exports = router;

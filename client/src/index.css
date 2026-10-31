@@ -496,6 +496,26 @@ html, body {
   background: var(--error-subtle);
 }
 
+.btn-user-action {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: var(--transition);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-user-action:hover {
+  color: var(--primary);
+  background: var(--primary-subtle);
+}
+
 /* ==========================================================================
    CARDS, METRICS & STATUS BADGES
    ========================================================================== */
@@ -697,6 +717,17 @@ html, body {
 
 .btn-secondary:hover:not(:disabled) {
   background: var(--btn-secondary-hover);
+}
+
+.btn-outline-primary {
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+}
+
+.btn-outline-primary:hover:not(:disabled) {
+  background: var(--primary);
+  color: white;
 }
 
 .btn-outline-cyan {

@@ -1,4 +1,5 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const prisma = require('../db');
 const { authenticateToken, requireSuperAdmin } = require('../middleware/auth');
 
@@ -115,6 +116,44 @@ router.put('/users/:id/status', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Error al actualizar estado del usuario: ' + error.message });
+  }
+});
+
+/**
+ * PUT /api/superadmin/users/:id/password
+ * Allows SuperAdmin to reset/set a new password for any user/client.
+ */
+router.put('/users/:id/password', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.trim().length < 6) {
+      return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 6 caracteres.' });
+    }
+
+    const targetUser = await prisma.user.findUnique({
+      where: { id }
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(newPassword.trim(), salt);
+
+    await prisma.user.update({
+      where: { id },
+      data: { passwordHash }
+    });
+
+    res.json({
+      success: true,
+      message: `Contraseña de "${targetUser.name || targetUser.email}" actualizada exitosamente.`
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al cambiar contraseña de usuario: ' + error.message });
   }
 });
 

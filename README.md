@@ -31,6 +31,7 @@ Plataforma SaaS completa, moderna y robusta de **Facturación Electrónica para 
   * **Amazon S3 / S3-Compatible:** Integración oficial con **Cloudflare R2** ($0 costo por descarga), **AWS S3**, **MinIO** on-premise y **DigitalOcean Spaces**.
   * **Modo Híbrido (Dual Sync):** Copia local para máxima velocidad + Réplica en la nube para respaldo permanente.
 * 🌓 **Modo Oscuro / Modo Claro:** Diseño esterilizado con selector instantáneo y persistencia en `localStorage`.
+* 🔐 **Gestión y Cambio de Contraseñas:** Autoservicio de cambio de clave para usuarios y SuperAdmin en el encabezado, más restablecimiento administrativo directo con generador seguro en el panel Super Admin.
 * 🔍 **Autocompletado Rápido:** Consulta en vivo de RUC (SUNAT) y DNI (RENIEC) para llenado automático de nombres y dirección fiscal.
 * ❌ **Anulaciones con Nota de Crédito:** Generación y envío automático de Notas de Crédito UBL 2.1 (tipo `07`) ante SUNAT.
 * 🤖 **Integración con Bot de Telegram:** Consulta de comprobantes y emisión rápida desde chats de Telegram.

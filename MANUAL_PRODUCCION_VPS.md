@@ -311,3 +311,19 @@ Para que cada empresa cliente empiece a emitir comprobantes legales a través de
    cat /var/www/facturador-sunat/MANUAL_INTEGRACION_SUNAT.md | less
    ```
 4. Los clientes también tienen acceso interactivo a esta guía directamente desde la web en la pestaña **Mi Empresa** haciendo clic en **"📖 ¿Cómo obtener estos datos? (Guía SUNAT)"**.
+
+---
+
+## 🔐 8. Gestión y Cambio de Contraseñas (SuperAdmin y Clientes)
+
+La plataforma cuenta con un sistema integral de cambio y restablecimiento de claves:
+
+1. **Autoservicio para Cualquier Usuario / SuperAdmin:**
+   - En la esquina superior derecha, junto al nombre del usuario en el encabezado, haz clic en el botón **🔑 Contraseña**.
+   - Se abrirá la ventana para ingresar la contraseña actual y establecer la nueva clave (mínimo 6 caracteres).
+
+2. **Restablecimiento Administrativo por el SuperAdmin:**
+   - En la pestaña **Super Admin** ➔ **Gestión de Cuentas y Empresas**, ubica al cliente en la tabla de usuarios.
+   - En la columna **Acciones**, haz clic en el botón **🔑 Contraseña**.
+   - Ingresa la nueva clave para el cliente o presiona el botón **🔄 Generar Aleatoria** para crear una contraseña segura al instante.
+   - Presiona **Asignar Contraseña**; el cliente podrá iniciar sesión de inmediato con esa clave.
