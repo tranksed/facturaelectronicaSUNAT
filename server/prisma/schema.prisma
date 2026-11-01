@@ -55,6 +55,8 @@ model Company {
   updatedAt          DateTime  @updatedAt
   
   invoices           Invoice[]
+  buzonNotifications BuzonSolNotification[]
+  sunafilAlerts      SunafilAlert[]
 }
 
 model Invoice {
@@ -139,4 +141,45 @@ model Config {
   telegramToken   String?
   isProduction    Boolean  @default(false)
   updatedAt       DateTime @updatedAt
+}
+
+model BuzonSolNotification {
+  id                 String    @id @default(uuid())
+  companyId          String
+  company            Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  numNotificacion    String    // Ej: "NOT-2026-003891"
+  tipoNotificacion   String    // "RESOLUCION", "ESQUELA", "CARTA_INDUCTIVA", "COBRANZA_COACTIVA", "AVISO_INFORMATIVO"
+  asunto             String
+  contenido          String?
+  fechaDeposito      String    // "YYYY-MM-DD"
+  fechaNotificacion  String?   // "YYYY-MM-DD"
+  fechaVencimiento   String?   // "YYYY-MM-DD"
+  leido              Boolean   @default(false)
+  etiqueta           String?   // "URGENTE", "PLAZO_VENCE", "INFORMATIVO"
+  adjuntoUrl         String?
+  
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+}
+
+model SunafilAlert {
+  id                 String    @id @default(uuid())
+  companyId          String
+  company            Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  numExpediente      String    // Ej: "EXP-2026-SUNAFIL-884"
+  tipoDocumento      String    // "REQUERIMIENTO_INFORMACION", "CARTA_INDUCTIVA", "NOTIFICACION_INSPECCION", "ACTA_INFRACCION", "ALERTA_PREVENTIVA"
+  materia            String    // "Seguridad y Salud en el Trabajo", "Planilla y Contratos", "Jornada Laboral", "Comité SST"
+  asunto             String
+  descripcion        String?
+  fechaDeposito      String    // "YYYY-MM-DD"
+  fechaVencimiento   String?   // "YYYY-MM-DD" (Plazo de descargos)
+  leido              Boolean   @default(false)
+  estado             String    @default("PENDIENTE") // "PENDIENTE", "ATENDIDO", "VENCIDO"
+  prioridad          String    @default("MEDIA") // "ALTA", "MEDIA", "BAJA"
+  adjuntoUrl         String?
+  
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 }

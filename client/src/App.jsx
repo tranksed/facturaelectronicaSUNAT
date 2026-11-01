@@ -4,6 +4,9 @@ import CompanyModal from './components/CompanyModal';
 import CompanySettings from './components/CompanySettings';
 import SuperAdminPanel from './components/SuperAdminPanel';
 import ChangePasswordModal from './components/ChangePasswordModal';
+import BuzonSolPanel from './components/BuzonSolPanel';
+import SunafilPanel from './components/SunafilPanel';
+import GuiaIntegracion from './components/GuiaIntegracion';
 import {
   IconDashboard,
   IconInvoice,
@@ -24,7 +27,10 @@ import {
   IconSettings,
   IconCode,
   IconArchive,
-  IconKey
+  IconKey,
+  IconMail,
+  IconBriefcase,
+  IconBookOpen
 } from './components/Icons';
 
 // Setup API endpoint (points to Express server on Port 3000 in dev)
@@ -593,11 +599,39 @@ export default function App() {
               </li>
               <li>
                 <button 
+                  className={`nav-item-btn ${activeTab === 'buzon-sol' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('buzon-sol')}
+                >
+                  <span className="nav-item-icon"><IconMail size={18} /></span>
+                  <span>Buzón SOL (SUNAT)</span>
+                </button>
+              </li>
+              <li>
+                <button 
+                  className={`nav-item-btn ${activeTab === 'sunafil' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('sunafil')}
+                >
+                  <span className="nav-item-icon"><IconBriefcase size={18} /></span>
+                  <span>Casilla SUNAFIL</span>
+                </button>
+              </li>
+              <li>
+                <button 
                   className={`nav-item-btn ${activeTab === 'settings' ? 'active' : ''}`}
                   onClick={() => setActiveTab('settings')}
                 >
                   <span className="nav-item-icon"><IconBuilding size={18} /></span>
                   <span>Mi Empresa</span>
+                </button>
+              </li>
+              <li>
+                <button 
+                  className={`nav-item-btn ${activeTab === 'guia-sunat' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('guia-sunat')}
+                  style={{ borderLeft: '3px solid #10b981' }}
+                >
+                  <span className="nav-item-icon"><IconBookOpen size={18} /></span>
+                  <span>Guía Integración</span>
                 </button>
               </li>
               {currentUser?.role === 'SUPERADMIN' && (
@@ -1411,7 +1445,31 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 4: MI EMPRESA / CONFIGURACIÓN (Component: CompanySettings) */}
+          {/* TAB 4: BUZÓN ELECTRÓNICO SOL (SUNAT) */}
+          {activeTab === 'buzon-sol' && (
+            <div className="animate-fade-in">
+              <BuzonSolPanel 
+                API_URL={API_URL}
+                authToken={authToken}
+                activeCompany={activeCompany}
+                companies={companies}
+              />
+            </div>
+          )}
+
+          {/* TAB 5: CASILLA ELECTRÓNICA SUNAFIL */}
+          {activeTab === 'sunafil' && (
+            <div className="animate-fade-in">
+              <SunafilPanel 
+                API_URL={API_URL}
+                authToken={authToken}
+                activeCompany={activeCompany}
+                companies={companies}
+              />
+            </div>
+          )}
+
+          {/* TAB 6: MI EMPRESA / CONFIGURACIÓN (Component: CompanySettings) */}
           {activeTab === 'settings' && (
             <div className="animate-fade-in">
               <CompanySettings
@@ -1423,7 +1481,18 @@ export default function App() {
             </div>
           )}
 
-          {/* TAB 5: PANEL SUPER ADMIN (Component: SuperAdminPanel) */}
+          {/* TAB 7: GUÍA OFICIAL DE INTEGRACIÓN VISUAL */}
+          {activeTab === 'guia-sunat' && (
+            <div className="animate-fade-in">
+              <GuiaIntegracion 
+                onNavigateToSettings={() => setActiveTab('settings')}
+                onNavigateToBuzon={() => setActiveTab('buzon-sol')}
+                onNavigateToSunafil={() => setActiveTab('sunafil')}
+              />
+            </div>
+          )}
+
+          {/* TAB 8: PANEL SUPER ADMIN (Component: SuperAdminPanel) */}
           {activeTab === 'superadmin' && currentUser?.role === 'SUPERADMIN' && (
             <div className="animate-fade-in">
               <SuperAdminPanel

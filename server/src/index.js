@@ -14,6 +14,8 @@ const AdmZip = require('adm-zip');
 const authRoutes = require('./routes/auth');
 const companyRoutes = require('./routes/companies');
 const superadminRoutes = require('./routes/superadmin');
+const buzonSolRoutes = require('./routes/buzon-sol');
+const sunafilRoutes = require('./routes/sunafil');
 const { authenticateToken, resolveActiveCompany } = require('./middleware/auth');
 
 const app = express();
@@ -28,6 +30,8 @@ app.use(express.json({ limit: '10mb' }));
 app.use('/api/auth', authRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/superadmin', superadminRoutes);
+app.use('/api/buzon-sol', buzonSolRoutes);
+app.use('/api/sunafil', sunafilRoutes);
 
 // Public branding endpoint for login & white-label customization
 app.get('/api/public/branding', async (req, res) => {
