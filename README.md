@@ -30,6 +30,9 @@ Plataforma SaaS completa, moderna y robusta de **Facturación Electrónica para 
   * **Disco Local del VPS:** Carpetas organizadas automáticamente por `YYYY-MM / RUC / YYYY-MM-DD`.
   * **Amazon S3 / S3-Compatible:** Integración oficial con **Cloudflare R2** ($0 costo por descarga), **AWS S3**, **MinIO** on-premise y **DigitalOcean Spaces**.
   * **Modo Híbrido (Dual Sync):** Copia local para máxima velocidad + Réplica en la nube para respaldo permanente.
+* 📬 **Consulta Masiva al Buzón SOL (SUNAT):** Monitoreo y sincronización multi-empresa mediante Clave SOL de notificaciones tributarias, resoluciones coactivas y esquelas de citación con alertas de plazos legales de descargo.
+* ⚖️ **Consulta Masiva Casilla Electrónica SUNAFIL:** Control preventivo multi-RUC de requerimientos inspectivos laborales, comités de SST, planillas y cartas inductivas vía autenticación Clave SOL.
+* 📖 **Guía Visual de Integración Interactiva:** Módulo gráfico integrado paso a paso para la obtención del Certificado CDT gratuito de SUNAT, creación de Usuario Secundario SOL y resolución de errores (1033, 1034, 0306).
 * 🌓 **Modo Oscuro / Modo Claro:** Diseño esterilizado con selector instantáneo y persistencia en `localStorage`.
 * 🔐 **Gestión y Cambio de Contraseñas:** Autoservicio de cambio de clave para usuarios y SuperAdmin en el encabezado, más restablecimiento administrativo directo con generador seguro en el panel Super Admin.
 * 🔍 **Autocompletado Rápido:** Consulta en vivo de RUC (SUNAT) y DNI (RENIEC) para llenado automático de nombres y dirección fiscal.
