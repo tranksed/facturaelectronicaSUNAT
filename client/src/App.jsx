@@ -1352,15 +1352,14 @@ export default function App() {
                               </span>
                             </td>
                             <td>
-                              <div className="action-buttons-group" style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                              <div className="action-buttons-group">
                                 {/* Formato A4 Oficial */}
                                 <a 
                                   href={`${API_URL}/receipt/${inv.id}?format=a4`}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="action-icon-btn"
+                                  className="action-icon-btn pdf"
                                   title="Ver e imprimir representación oficial en Formato A4"
-                                  style={{ borderColor: 'rgba(37,99,235,0.4)', color: 'var(--primary)' }}
                                 >
                                   <IconFileText size={13} />
                                   <span>A4</span>
@@ -1371,7 +1370,7 @@ export default function App() {
                                   href={`${API_URL}/receipt/${inv.id}?format=ticket`}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="action-icon-btn"
+                                  className="action-icon-btn ticket"
                                   title="Ver representación para impresora térmica de Ticket (80mm)"
                                 >
                                   <IconExternalLink size={13} />
@@ -1382,7 +1381,7 @@ export default function App() {
                                 <a 
                                   href={`${API_URL}/api/documents/${inv.id}/download/xml`}
                                   download
-                                  className="action-icon-btn"
+                                  className="action-icon-btn xml"
                                   title="Descargar XML firmado UBL 2.1"
                                 >
                                   <IconCode size={13} />
@@ -1394,9 +1393,8 @@ export default function App() {
                                   <a 
                                     href={`${API_URL}/api/documents/${inv.id}/download/cdr`}
                                     download
-                                    className="action-icon-btn"
+                                    className="action-icon-btn cdr"
                                     title="Descargar archivo CDR oficial (Zip de SUNAT)"
-                                    style={{ borderColor: 'rgba(16,185,129,0.3)', color: 'var(--success)' }}
                                   >
                                     <IconArchive size={13} />
                                     <span>CDR (Zip)</span>
@@ -1408,7 +1406,7 @@ export default function App() {
                                   <a 
                                     href={`${API_URL}/api/documents/${inv.id}/download/cdr-xml`}
                                     download
-                                    className="action-icon-btn"
+                                    className="action-icon-btn cdr-xml"
                                     title="Descargar Constancia de Recepción CDR (XML extraído)"
                                   >
                                     <IconDownload size={13} />
