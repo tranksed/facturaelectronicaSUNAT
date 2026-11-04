@@ -31,11 +31,22 @@ import {
   IconMail,
   IconBriefcase,
   IconBookOpen,
+  IconBell,
   DollarIcon,
   CheckCircleIcon,
   AlertIcon,
   ClockIcon,
-  ArrowUpIcon
+  ArrowUpIcon,
+  ArrowLeftIcon,
+  DocIcon,
+  TicketIcon,
+  CodeIcon,
+  ArchiveIcon,
+  DownloadIcon,
+  TrashBinIcon,
+  SendIcon,
+  LoaderCircleIcon,
+  EyeIcon
 } from './components/Icons';
 
 // Setup API endpoint (points to Express server on Port 3000 in dev)
@@ -616,7 +627,7 @@ export default function App() {
                   className={`nav-item-btn ${activeTab === 'sunafil' ? 'active' : ''}`}
                   onClick={() => setActiveTab('sunafil')}
                 >
-                  <span className="nav-item-icon"><IconBriefcase size={18} /></span>
+                  <span className="nav-item-icon"><IconBell size={18} /></span>
                   <span>Casilla SUNAFIL</span>
                 </button>
               </li>
@@ -922,7 +933,10 @@ export default function App() {
                     <IconFileText size={18} />
                     <span>Últimos Comprobantes</span>
                   </h2>
-                  <button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('invoices')}>Ver todos</button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => setActiveTab('invoices')}>
+                    <EyeIcon width={13} height={13} />
+                    <span>Ver todos</span>
+                  </button>
                 </div>
                 <RecentInvoicesTable invoices={invoices.slice(0, 5)} />
               </div>
@@ -935,7 +949,8 @@ export default function App() {
               {/* Top Navigation Bar with Back & Toggle */}
               <div className="apisunat-header-bar">
                 <button type="button" className="apisunat-back-btn" onClick={() => setActiveTab('dashboard')}>
-                  ← <span>Emitir {tipoDoc === '01' ? 'Factura' : 'Boleta'}</span>
+                  <ArrowLeftIcon width={16} height={16} />
+                  <span>Emitir {tipoDoc === '01' ? 'Factura' : 'Boleta'}</span>
                 </button>
                 
                 <div className="apisunat-doc-toggle">
@@ -949,7 +964,8 @@ export default function App() {
                       fetchNextInvoiceId('01', 'F001');
                     }}
                   >
-                    Factura
+                    <DocIcon width={14} height={14} />
+                    <span>Factura</span>
                   </button>
                   <button 
                     type="button" 
@@ -961,7 +977,8 @@ export default function App() {
                       fetchNextInvoiceId('03', 'B001');
                     }}
                   >
-                    Boleta
+                    <TicketIcon width={14} height={14} />
+                    <span>Boleta</span>
                   </button>
                 </div>
               </div>
@@ -1069,7 +1086,7 @@ export default function App() {
                           title="Buscar en SUNAT / RENIEC"
                           disabled={lookupLoading}
                         >
-                          {lookupLoading ? '⌛' : <IconSearch size={15} />}
+                          {lookupLoading ? <LoaderCircleIcon className="animate-spin" width={15} height={15} /> : <IconSearch size={15} />}
                         </button>
                       </div>
                     </div>
@@ -1328,7 +1345,17 @@ export default function App() {
                       className="apisunat-submit-btn"
                       disabled={loading}
                     >
-                      {loading ? 'Emitiendo y Firmando...' : `Emitir ${tipoDoc === '01' ? 'Factura' : 'Boleta'} a SUNAT`}
+                      {loading ? (
+                        <>
+                          <LoaderCircleIcon className="animate-spin" width={17} height={17} />
+                          <span>Emitiendo y Firmando XML...</span>
+                        </>
+                      ) : (
+                        <>
+                          <SendIcon width={17} height={17} />
+                          <span>Emitir {tipoDoc === '01' ? 'Factura' : 'Boleta'} a SUNAT</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </form>
@@ -1429,7 +1456,7 @@ export default function App() {
                                   className="action-icon-btn pdf"
                                   title="Ver e imprimir representación oficial en Formato A4"
                                 >
-                                  <IconFileText size={13} />
+                                  <DocIcon width={13} height={13} />
                                   <span>A4</span>
                                 </a>
 
@@ -1441,7 +1468,7 @@ export default function App() {
                                   className="action-icon-btn ticket"
                                   title="Ver representación para impresora térmica de Ticket (80mm)"
                                 >
-                                  <IconExternalLink size={13} />
+                                  <TicketIcon width={13} height={13} />
                                   <span>Ticket</span>
                                 </a>
 
@@ -1452,7 +1479,7 @@ export default function App() {
                                   className="action-icon-btn xml"
                                   title="Descargar XML firmado UBL 2.1"
                                 >
-                                  <IconCode size={13} />
+                                  <CodeIcon width={13} height={13} />
                                   <span>XML</span>
                                 </a>
 
@@ -1464,7 +1491,7 @@ export default function App() {
                                     className="action-icon-btn cdr"
                                     title="Descargar archivo CDR oficial (Zip de SUNAT)"
                                   >
-                                    <IconArchive size={13} />
+                                    <ArchiveIcon width={13} height={13} />
                                     <span>CDR (Zip)</span>
                                   </a>
                                 )}
@@ -1477,7 +1504,7 @@ export default function App() {
                                     className="action-icon-btn cdr-xml"
                                     title="Descargar Constancia de Recepción CDR (XML extraído)"
                                   >
-                                    <IconDownload size={13} />
+                                    <DownloadIcon width={13} height={13} />
                                     <span>CDR (XML)</span>
                                   </a>
                                 )}
@@ -1489,7 +1516,7 @@ export default function App() {
                                     onClick={() => handleAnularDocument(inv.id)}
                                     title="Anular comprobante mediante Nota de Crédito"
                                   >
-                                    <IconTrash size={13} />
+                                    <TrashBinIcon width={13} height={13} />
                                     <span>Anular</span>
                                   </button>
                                 )}

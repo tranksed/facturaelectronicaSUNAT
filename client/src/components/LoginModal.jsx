@@ -1,5 +1,14 @@
 import React, { useState } from 'react';
-import { IconBuilding, IconShield, IconFileText, IconCheck, IconLock } from './Icons';
+import { 
+  IconBuilding, 
+  IconShield, 
+  IconFileText, 
+  IconCheck, 
+  IconLock,
+  ArrowRightIcon,
+  PlusIcon,
+  LoaderCircleIcon
+} from './Icons';
 
 export default function LoginModal({ isOpen, onLoginSuccess, branding, API_URL }) {
   const [isRegister, setIsRegister] = useState(false);
@@ -234,10 +243,25 @@ export default function LoginModal({ isOpen, onLoginSuccess, branding, API_URL }
             <button 
               type="submit" 
               className="btn btn-primary" 
-              style={{ width: '100%', padding: '12px', fontSize: '14px', fontWeight: 700 }}
+              style={{ width: '100%', height: '42px', fontSize: '14px', fontWeight: 700 }}
               disabled={loading}
             >
-              {loading ? '⏳ Procesando...' : (isRegister ? 'Crear Mi Cuenta de Cliente' : 'Ingresar al Sistema')}
+              {loading ? (
+                <>
+                  <LoaderCircleIcon className="animate-spin" width={16} height={16} />
+                  <span>Procesando...</span>
+                </>
+              ) : isRegister ? (
+                <>
+                  <PlusIcon width={16} height={16} />
+                  <span>Crear Mi Cuenta de Cliente</span>
+                </>
+              ) : (
+                <>
+                  <ArrowRightIcon width={16} height={16} />
+                  <span>Ingresar al Sistema</span>
+                </>
+              )}
             </button>
           </form>
         )}
@@ -256,8 +280,10 @@ export default function LoginModal({ isOpen, onLoginSuccess, branding, API_URL }
               type="button" 
               className="btn-promo-register"
               onClick={() => { setIsRegister(true); setError(null); }}
+              style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             >
-              Crear Mi Cuenta de Cliente →
+              <span>Crear Mi Cuenta de Cliente</span>
+              <ArrowRightIcon width={14} height={14} />
             </button>
           </div>
         )}

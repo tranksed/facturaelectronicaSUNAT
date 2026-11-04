@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import {
+  IconBell,
   IconBriefcase,
   IconRefresh,
   IconAlertTriangle,
@@ -168,7 +169,7 @@ export default function SunafilPanel({ API_URL, authToken, activeCompany, compan
       <div className="settings-page-header">
         <div>
           <h1 className="page-title" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <IconBriefcase size={24} />
+            <IconBell size={24} />
             <span>Casilla Electrónica SUNAFIL</span>
           </h1>
           <p className="page-subtitle">

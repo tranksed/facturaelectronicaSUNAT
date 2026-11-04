@@ -792,8 +792,17 @@ html, body {
 }
 
 /* ==========================================================================
-   BUTTONS & FORM INPUTS (HIGH-END MODERN SAAS DESIGN SYSTEM)
+   BUTTONS & FORM INPUTS (TAILADMIN PRO DESIGN SYSTEM)
    ========================================================================== */
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin {
+  animation: spin 0.9s linear infinite;
+}
 
 /* Universal Button Base: Applied to .btn as well as directly styled variants */
 .btn,
@@ -812,11 +821,12 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 8px 16px;
+  height: 38px;
+  padding: 0 16px;
   font-family: var(--font-family);
   font-size: 13px;
   font-weight: 600;
-  line-height: 1.25;
+  line-height: 1;
   letter-spacing: -0.012em;
   border-radius: 8px;
   cursor: pointer;
@@ -829,14 +839,31 @@ html, body {
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.btn > svg,
+.btn-sm > svg,
+.btn-md > svg,
+.btn-lg > svg,
+.btn-primary > svg,
+.btn-secondary > svg,
+.btn-danger > svg,
+.btn-success > svg,
+.btn-outline-primary > svg,
+.btn-outline-cyan > svg,
+.action-icon-btn > svg {
+  flex-shrink: 0;
+  pointer-events: none;
+  transition: transform 0.16s ease;
+}
+
 .btn:active:not(:disabled),
 .btn-sm:active:not(:disabled),
 .btn-lg:active:not(:disabled),
 .btn-primary:active:not(:disabled),
 .btn-secondary:active:not(:disabled),
 .btn-danger:active:not(:disabled),
-.btn-success:active:not(:disabled) {
-  transform: translateY(1px) scale(0.985);
+.btn-success:active:not(:disabled),
+.action-icon-btn:active:not(:disabled) {
+  transform: scale(0.975);
 }
 
 .btn:focus-visible,
@@ -845,20 +872,20 @@ html, body {
   box-shadow: 0 0 0 2px var(--bg-app), 0 0 0 4px var(--primary);
 }
 
-/* Primary Button: Gradient depth, inset top highlight line, vibrant glow */
+/* Primary Button (TailAdmin Brand Solid) */
 .btn-primary {
-  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 100%);
+  background: linear-gradient(180deg, #465fff 0%, #3641f5 100%);
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 1px 2px rgba(0, 0, 0, 0.12), 0 4px 14px var(--primary-glow);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 1px 2px rgba(0, 0, 0, 0.1), 0 4px 14px rgba(70, 95, 255, 0.32);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(180deg, #60a5fa 0%, #1d4ed8 100%);
-  border-color: rgba(255, 255, 255, 0.28);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36), 0 2px 4px rgba(0, 0, 0, 0.16), 0 6px 20px var(--primary-glow);
-  transform: translateY(-1px);
+  background: linear-gradient(180deg, #5b73ff 0%, #2b35db 100%);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.36), 0 4px 18px rgba(70, 95, 255, 0.42);
+  transform: translateY(-1.5px);
 }
 
 .btn-primary:disabled,
@@ -870,7 +897,7 @@ html, body {
   pointer-events: none;
 }
 
-/* Secondary Button: Clean slate / subtle glass border with top highlight */
+/* Secondary Button (TailAdmin Card Outline) */
 .btn-secondary {
   background: var(--btn-secondary-bg);
   border: 1px solid var(--btn-secondary-border);
@@ -880,39 +907,40 @@ html, body {
 
 .btn-secondary:hover:not(:disabled) {
   background: var(--btn-secondary-hover);
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.25);
   color: var(--text-primary);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+  transform: translateY(-1.5px);
 }
 
 [data-theme="light"] .btn-secondary {
   background: #ffffff;
-  border-color: #cbd5e1;
+  border-color: #d1d5db;
   color: #1e293b;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 [data-theme="light"] .btn-secondary:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #94a3b8;
+  background: #f9fafb;
+  border-color: #9ca3af;
   color: #0f172a;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
 }
 
 /* Outline Primary */
 .btn-outline-primary {
-  background: var(--primary-subtle);
-  border: 1px solid rgba(37, 99, 235, 0.35);
-  color: var(--primary);
-  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.05);
+  background: rgba(70, 95, 255, 0.08);
+  border: 1px solid rgba(70, 95, 255, 0.32);
+  color: #465fff;
+  box-shadow: 0 1px 2px rgba(70, 95, 255, 0.06);
 }
 
 .btn-outline-primary:hover:not(:disabled) {
-  background: var(--primary);
+  background: #465fff;
   color: #ffffff;
-  border-color: var(--primary);
-  box-shadow: 0 4px 14px var(--primary-glow);
-  transform: translateY(-1px);
+  border-color: #465fff;
+  box-shadow: 0 4px 14px rgba(70, 95, 255, 0.35);
+  transform: translateY(-1.5px);
 }
 
 /* Outline Cyan */
@@ -928,96 +956,100 @@ html, body {
   color: #ffffff;
   border-color: var(--cyan);
   box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35);
-  transform: translateY(-1px);
+  transform: translateY(-1.5px);
 }
 
-/* Danger Button (Solid) */
+/* Danger Button (TailAdmin Solid Red) */
 .btn-danger {
-  background: linear-gradient(180deg, #fb7185 0%, #e11d48 100%);
+  background: linear-gradient(180deg, #f04438 0%, #d92d20 100%);
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), 0 2px 4px rgba(225, 29, 72, 0.25), 0 6px 14px rgba(225, 29, 72, 0.35);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 6px rgba(217, 45, 32, 0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .btn-danger:hover:not(:disabled) {
-  background: linear-gradient(180deg, #f43f5e 0%, #be123c 100%);
-  border-color: rgba(255, 255, 255, 0.28);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 4px 16px rgba(225, 29, 72, 0.45);
-  transform: translateY(-1px);
+  background: linear-gradient(180deg, #f97066 0%, #b42318 100%);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 18px rgba(217, 45, 32, 0.42);
+  transform: translateY(-1.5px);
 }
 
 /* Danger Outline */
 .btn-danger-outline {
-  background: var(--error-subtle);
-  border: 1px solid var(--error-border);
-  color: var(--error);
+  background: rgba(240, 68, 56, 0.08);
+  border: 1px solid rgba(240, 68, 56, 0.32);
+  color: #f04438;
 }
 
 .btn-danger-outline:hover:not(:disabled) {
-  background: var(--error);
+  background: #f04438;
   color: #ffffff;
-  border-color: var(--error);
-  box-shadow: 0 4px 14px rgba(244, 63, 94, 0.35);
-  transform: translateY(-1px);
+  border-color: #f04438;
+  box-shadow: 0 4px 14px rgba(240, 68, 56, 0.35);
+  transform: translateY(-1.5px);
 }
 
-/* Success Button */
+/* Success Button (TailAdmin Solid Emerald) */
 .btn-success {
-  background: linear-gradient(180deg, #34d399 0%, #059669 100%);
+  background: linear-gradient(180deg, #12b76a 0%, #039855 100%);
   color: #ffffff;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.3), 0 2px 4px rgba(16, 185, 129, 0.25), 0 6px 14px rgba(16, 185, 129, 0.35);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.25), 0 2px 6px rgba(3, 152, 85, 0.3);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .btn-success:hover:not(:disabled) {
-  background: linear-gradient(180deg, #10b981 0%, #047857 100%);
-  border-color: rgba(255, 255, 255, 0.3);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.38), 0 4px 16px rgba(16, 185, 129, 0.45);
-  transform: translateY(-1px);
+  background: linear-gradient(180deg, #32d583 0%, #027a48 100%);
+  border-color: rgba(255, 255, 255, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 18px rgba(3, 152, 85, 0.42);
+  transform: translateY(-1.5px);
 }
 
 .btn-success-outline {
-  background: var(--success-subtle);
-  border: 1px solid var(--success-border);
-  color: var(--success);
+  background: rgba(18, 183, 106, 0.08);
+  border: 1px solid rgba(18, 183, 106, 0.32);
+  color: #12b76a;
 }
 
 .btn-success-outline:hover:not(:disabled) {
-  background: var(--success);
+  background: #12b76a;
   color: #ffffff;
-  border-color: var(--success);
-  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35);
-  transform: translateY(-1px);
+  border-color: #12b76a;
+  box-shadow: 0 4px 14px rgba(18, 183, 106, 0.35);
+  transform: translateY(-1.5px);
 }
 
 /* Size Modifiers */
 .btn-xs {
-  padding: 4px 8px;
-  font-size: 11px;
-  border-radius: 6px;
-  gap: 4px;
-}
-
-.btn-sm {
-  padding: 5px 11px;
-  font-size: 12px;
+  height: 28px;
+  padding: 0 10px;
+  font-size: 11.5px;
   border-radius: 6px;
   gap: 5px;
 }
 
+.btn-sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12px;
+  border-radius: 6px;
+  gap: 6px;
+}
+
 .btn-md {
-  padding: 8px 16px;
+  height: 38px;
+  padding: 0 16px;
   font-size: 13px;
   border-radius: 8px;
 }
 
 .btn-lg {
-  padding: 11px 22px;
+  height: 44px;
+  padding: 0 22px;
   font-size: 14.5px;
   font-weight: 700;
-  border-radius: 9px;
+  border-radius: 10px;
   gap: 10px;
 }
 
@@ -1124,7 +1156,8 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  padding: 5px 10px;
+  height: 28px;
+  padding: 0 9px;
   border-radius: 6px;
   font-size: 11.5px;
   font-weight: 600;
@@ -1599,18 +1632,19 @@ html, body {
 }
 
 .apisunat-submit-btn {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  background: linear-gradient(180deg, #465fff 0%, #3641f5 100%);
   color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.24);
   font-family: var(--font-family);
-  font-size: 14.5px;
+  font-size: 14px;
   font-weight: 700;
   letter-spacing: -0.01em;
-  padding: 13px 32px;
+  height: 44px;
+  padding: 0 28px;
   border-radius: 9px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 16px var(--primary-glow);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 4px 16px rgba(70, 95, 255, 0.35);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   display: inline-flex;
   align-items: center;
@@ -1619,13 +1653,13 @@ html, body {
 }
 
 .apisunat-submit-btn:hover:not(:disabled) {
-  background: linear-gradient(135deg, #60a5fa 0%, #1e40af 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 8px 24px var(--primary-glow);
+  background: linear-gradient(180deg, #5b73ff 0%, #2b35db 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 8px 24px rgba(70, 95, 255, 0.48);
   transform: translateY(-2px);
 }
 
 .apisunat-submit-btn:active:not(:disabled) {
-  transform: translateY(1px) scale(0.99);
+  transform: scale(0.985);
 }
 
 .apisunat-submit-btn:disabled {

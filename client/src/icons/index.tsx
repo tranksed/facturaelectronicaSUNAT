@@ -91,6 +91,7 @@ export { LikeIcon } from "./like";
 export { LinkIcon } from "./link";
 export { LinkedinIcon } from "./linkedin";
 export { ListIcon } from "./list";
+export { LoaderCircleIcon } from "./loader-circle";
 export { LockIcon } from "./lock";
 export { LogOutIcon } from "./log-out";
 export { MailIcon } from "./mail";

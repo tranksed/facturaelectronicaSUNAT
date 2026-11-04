@@ -15,6 +15,7 @@ import {
   IconFileText,
   IconCode,
   IconKey,
+  IconLock,
   IconEdit,
   IconTrash
 } from './Icons';
@@ -480,9 +481,10 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
                             className={`btn-sm ${u.status === 'ACTIVE' ? 'btn-danger-outline' : 'btn-outline-cyan'}`}
                             onClick={() => handleToggleUserStatus(u)}
                             title={u.status === 'ACTIVE' ? 'Suspender acceso a este usuario' : 'Reactivar acceso'}
-                            style={{ padding: '4px 8px' }}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '4px 8px' }}
                           >
-                            {u.status === 'ACTIVE' ? 'Suspender' : 'Reactivar'}
+                            {u.status === 'ACTIVE' ? <IconLock size={12} /> : <IconCheck size={12} />}
+                            <span>{u.status === 'ACTIVE' ? 'Suspender' : 'Reactivar'}</span>
                           </button>
                         ) : null}
 
