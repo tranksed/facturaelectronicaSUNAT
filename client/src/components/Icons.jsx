@@ -171,3 +171,23 @@ export const IconBookOpen = ({ size = 18, className = "" }) => (
 export const IconAlertTriangle = ({ size = 18, className = "" }) => (
   <TailAdminIcons.AlertIcon width={size} height={size} className={className} />
 );
+
+export const IconUsers = ({ size = 18, className = "" }) => (
+  <TailAdminIcons.UsersIcon width={size} height={size} className={className} />
+);
+
+export const IconDollar = ({ size = 18, className = "" }) => (
+  <TailAdminIcons.DollarIcon width={size} height={size} className={className} />
+);
+
+export const IconPaypal = ({ size = 18, className = "" }) => (
+  <TailAdminIcons.PaypalIcon width={size} height={size} className={className} />
+);
+
+export const IconSpark = ({ size = 18, className = "" }) => (
+  <TailAdminIcons.SparkIcon width={size} height={size} className={className} />
+);
+
+export const IconCrown = ({ size = 18, className = "" }) => (
+  <TailAdminIcons.DiamondIcon width={size} height={size} className={className} />
+);

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import AdminResetPasswordModal from './AdminResetPasswordModal';
 import AdminEditUserModal from './AdminEditUserModal';
 import AdminDeleteUserModal from './AdminDeleteUserModal';
+import AdminPlanModal from './AdminPlanModal';
+import AdminUserPlanModal from './AdminUserPlanModal';
 import {
   IconShield,
   IconUser,
@@ -17,13 +19,49 @@ import {
   IconKey,
   IconLock,
   IconEdit,
-  IconTrash
+  IconTrash,
+  IconCrown,
+  IconCreditCard,
+  IconPlus,
+  IconPaypal,
+  IconDollar,
+  LoaderCircleIcon
 } from './Icons';
 
 export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated }) {
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [storageStats, setStorageStats] = useState(null);
+  const [plans, setPlans] = useState([]);
+  const [selectedPlanForEdit, setSelectedPlanForEdit] = useState(null);
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [selectedUserForPlan, setSelectedUserForPlan] = useState(null);
+  const [isUserPlanModalOpen, setIsUserPlanModalOpen] = useState(false);
+
+  // Gateways configuration
+  const [gatewaysForm, setGatewaysForm] = useState({
+    izipayActive: false,
+    izipayPublicKey: '',
+    izipayClientAnswer: '',
+    izipayShaKey: '',
+    izipaySandbox: true,
+    mercadopagoActive: false,
+    mercadopagoPublicKey: '',
+    mercadopagoAccessToken: '',
+    mercadopagoSandbox: true,
+    paypalActive: false,
+    paypalClientId: '',
+    paypalSecret: '',
+    paypalMode: 'sandbox',
+    culqiActive: false,
+    culqiPublicKey: '',
+    culqiSecretKey: '',
+    bankTransferActive: true,
+    bankTransferInfo: ''
+  });
+  const [savingGateways, setSavingGateways] = useState(false);
+  const [paymentOrders, setPaymentOrders] = useState([]);
+  const [approvingOrderId, setApprovingOrderId] = useState(null);
   
   const [whiteLabel, setWhiteLabel] = useState({
     platformName: '',
@@ -135,10 +173,104 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
           sftpRemotePath: sData.sftpConfig?.sftpRemotePath || '/var/storage/comprobantes'
         }));
       }
+
+      // 5. Fetch Subscription Plans
+      const plansRes = await fetch(`${API_URL}/api/superadmin/plans`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (plansRes.ok) {
+        setPlans(await plansRes.json());
+      }
+
+      // 6. Fetch Gateways Configuration
+      const gatewaysRes = await fetch(`${API_URL}/api/superadmin/gateways/config`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (gatewaysRes.ok) {
+        const gData = await gatewaysRes.json();
+        setGatewaysForm(prev => ({
+          ...prev,
+          ...gData
+        }));
+      }
+
+      // 7. Fetch Payment Orders
+      const ordersRes = await fetch(`${API_URL}/api/superadmin/gateways/orders`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (ordersRes.ok) {
+        setPaymentOrders(await ordersRes.json());
+      }
     } catch (e) {
       showMsg('Error al cargar datos de Super Admin: ' + e.message, 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveGateways = async (e) => {
+    e.preventDefault();
+    setSavingGateways(true);
+    try {
+      const res = await fetch(`${API_URL}/api/superadmin/gateways/config`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify(gatewaysForm)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showMsg(data.message, 'success');
+      } else {
+        showMsg(data.error || 'Error al guardar pasarelas', 'error');
+      }
+    } catch (e) {
+      showMsg('Error de conexión al guardar pasarelas: ' + e.message, 'error');
+    } finally {
+      setSavingGateways(false);
+    }
+  };
+
+  const handleApproveOrder = async (orderId) => {
+    if (!window.confirm('¿Aprobar esta orden de pago y activar inmediatamente el plan para el cliente?')) return;
+    setApprovingOrderId(orderId);
+    try {
+      const res = await fetch(`${API_URL}/api/superadmin/gateways/orders/${orderId}/approve`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showMsg(data.message, 'success');
+        loadData();
+      } else {
+        showMsg(data.error || 'Error al aprobar orden', 'error');
+      }
+    } catch (e) {
+      showMsg('Error al aprobar orden: ' + e.message, 'error');
+    } finally {
+      setApprovingOrderId(null);
+    }
+  };
+
+  const handleDeletePlan = async (planId, planName) => {
+    if (!window.confirm(`¿Estás seguro de eliminar el plan "${planName}"? Si tiene usuarios se desactivará automáticamente.`)) return;
+    try {
+      const res = await fetch(`${API_URL}/api/superadmin/plans/${planId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMsg(data.message, 'success');
+        loadData();
+      } else {
+        showMsg(data.error || 'Error al eliminar plan', 'error');
+      }
+    } catch (e) {
+      showMsg('Error al eliminar plan: ' + e.message, 'error');
     }
   };
 
@@ -365,6 +497,20 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
           <span>Gestión de Cuentas y Empresas ({users.length})</span>
         </button>
         <button 
+          className={`admin-tab-btn ${activeAdminSubTab === 'plans' ? 'active' : ''}`}
+          onClick={() => setActiveAdminSubTab('plans')}
+        >
+          <IconCrown size={15} />
+          <span>Planes y Paquetes de Cobro ({plans.length})</span>
+        </button>
+        <button 
+          className={`admin-tab-btn ${activeAdminSubTab === 'gateways' ? 'active' : ''}`}
+          onClick={() => setActiveAdminSubTab('gateways')}
+        >
+          <IconCreditCard size={15} />
+          <span>Pasarelas de Pago & Suscripciones</span>
+        </button>
+        <button 
           className={`admin-tab-btn ${activeAdminSubTab === 'whitelabel' ? 'active' : ''}`}
           onClick={() => setActiveAdminSubTab('whitelabel')}
         >
@@ -395,6 +541,7 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
                   <th>Usuario</th>
                   <th>Rol</th>
                   <th>Empresas Registradas (RUCs)</th>
+                  <th>Plan Comercial</th>
                   <th style={{ textAlign: 'center' }}>Comprobantes</th>
                   <th style={{ textAlign: 'center' }}>Estado</th>
                   <th style={{ textAlign: 'center' }}>Acciones</th>
@@ -434,6 +581,25 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
                         <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Sin empresas registradas aún</span>
                       )}
                     </td>
+                    <td>
+                      {u.plan ? (
+                        <div>
+                          <span className="status-pill prod" style={{ fontSize: '11px', fontWeight: 700 }}>
+                            {u.plan.name}
+                          </span>
+                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '3px' }}>
+                            Docs: <strong>{u.docsIssuedCount || 0}</strong> / {u.plan.docLimit === -1 ? '∞' : u.plan.docLimit}
+                          </div>
+                          {u.planExpiresAt && (
+                            <div style={{ fontSize: '10.5px', color: new Date() > new Date(u.planExpiresAt) ? '#ef4444' : 'var(--text-muted)' }}>
+                              {new Date() > new Date(u.planExpiresAt) ? 'Vencido: ' : 'Vence: '}{new Date(u.planExpiresAt).toLocaleDateString()}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Plan Gratuito</span>
+                      )}
+                    </td>
                     <td style={{ textAlign: 'center', fontWeight: 700 }}>
                       {u.invoicesCount || 0}
                     </td>
@@ -444,6 +610,21 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '5px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                        {/* Gestionar Plan */}
+                        <button
+                          type="button"
+                          className="btn-sm btn-outline-cyan"
+                          onClick={() => {
+                            setSelectedUserForPlan(u);
+                            setIsUserPlanModalOpen(true);
+                          }}
+                          title="Asignar plan o regularizar cuota de documentos"
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '4px 8px' }}
+                        >
+                          <IconCrown size={12} />
+                          <span>Plan</span>
+                        </button>
+
                         {/* Editar Datos */}
                         <button
                           type="button"
@@ -1045,6 +1226,468 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
 
         </div>
       )}
+
+      {/* TAB: PLANES Y PAQUETES DE COBRO */}
+      {activeAdminSubTab === 'plans' && (
+        <div className="glass-card animate-fade-in" style={{ marginTop: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
+            <div>
+              <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <IconCrown size={20} style={{ color: '#f59e0b' }} />
+                <span>Planes y Paquetes de Cobro</span>
+              </h2>
+              <span className="field-hint">
+                Configura los precios, límites de facturación mensual y cantidad de usuarios por suscripción comercial.
+              </span>
+            </div>
+
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                setSelectedPlanForEdit(null);
+                setIsPlanModalOpen(true);
+              }}
+            >
+              <IconPlus size={16} />
+              <span>Crear Nuevo Plan</span>
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+            {plans.map(p => (
+              <div 
+                key={p.id}
+                className="glass-card"
+                style={{
+                  padding: '18px',
+                  borderRadius: '12px',
+                  border: p.isPopular ? '2px solid #f59e0b' : '1px solid var(--border-color)',
+                  position: 'relative',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between'
+                }}
+              >
+                {p.isPopular && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '-10px',
+                    right: '14px',
+                    background: '#f59e0b',
+                    color: '#fff',
+                    fontSize: '9.5px',
+                    fontWeight: 700,
+                    padding: '2px 8px',
+                    borderRadius: '10px',
+                    textTransform: 'uppercase'
+                  }}>
+                    Popular
+                  </span>
+                )}
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <h3 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>{p.name}</h3>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>CÓDIGO: <code>{p.code}</code></span>
+                    </div>
+                    <span className={`status-pill ${p.isActive ? 'prod' : 'error'}`}>
+                      {p.isActive ? 'Activo' : 'Inactivo'}
+                    </span>
+                  </div>
+
+                  <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: '8px 0 12px 0', minHeight: '34px' }}>
+                    {p.description || 'Sin descripción'}
+                  </p>
+
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--primary)', marginBottom: '12px' }}>
+                    {p.price === 0 ? 'GRATIS' : `S/. ${p.price}`}
+                    <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-muted)' }}> / mes</span>
+                  </div>
+
+                  <div style={{ fontSize: '12px', borderTop: '1px solid var(--border-color)', paddingTop: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                      <IconFileText size={14} style={{ color: 'var(--primary)' }} />
+                      <strong>{p.docLimit === -1 ? 'Comprobantes Ilimitados' : `${p.docLimit} docs/mes`}</strong>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                      <IconUser size={14} style={{ color: 'var(--primary)' }} />
+                      <span>{p.userLimit} {p.userLimit === 1 ? 'Usuario' : 'Usuarios'} de equipo</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', color: 'var(--text-secondary)' }}>
+                      <IconCheck size={14} style={{ color: '#10b981' }} />
+                      <span>{p.usersCount || 0} inquilinos suscritos</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                    onClick={() => {
+                      setSelectedPlanForEdit(p);
+                      setIsPlanModalOpen(true);
+                    }}
+                  >
+                    <IconEdit size={12} />
+                    <span>Editar</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-danger-outline btn-sm"
+                    onClick={() => handleDeletePlan(p.id, p.name)}
+                    title="Eliminar o desactivar plan"
+                  >
+                    <IconTrash size={12} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* TAB: PASARELAS DE PAGO & SUSCRIPCIONES */}
+      {activeAdminSubTab === 'gateways' && (
+        <div className="glass-card animate-fade-in" style={{ marginTop: '20px' }}>
+          <div style={{ marginBottom: '18px' }}>
+            <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <IconCreditCard size={20} />
+              <span>Configuración de Pasarelas de Pago Oficiales</span>
+            </h2>
+            <span className="field-hint">
+              Configura tus credenciales de cobro para Izipay, Mercado Pago, PayPal, Culqi y Transferencias Bancarias para recibir los pagos de tus clientes.
+            </span>
+          </div>
+
+          <form onSubmit={handleSaveGateways}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '22px' }}>
+              {/* 1. Mercado Pago */}
+              <div className="glass-card" style={{ padding: '16px', borderRadius: '10px', borderTop: '3px solid #009ee3' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <strong style={{ fontSize: '15px', color: '#009ee3' }}>Mercado Pago</strong>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox"
+                      checked={gatewaysForm.mercadopagoActive}
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, mercadopagoActive: e.target.checked })}
+                    />
+                    <span>{gatewaysForm.mercadopagoActive ? 'Habilitado' : 'Deshabilitado'}</span>
+                  </label>
+                </div>
+
+                <div className="form-group-field" style={{ marginBottom: '10px' }}>
+                  <label className="field-label" style={{ fontSize: '11.5px' }}>Public Key (Clave Pública)</label>
+                  <input 
+                    type="text" 
+                    className="input-field" 
+                    placeholder="TEST-xxxx o APP_USR-xxxx" 
+                    value={gatewaysForm.mercadopagoPublicKey || ''} 
+                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, mercadopagoPublicKey: e.target.value })} 
+                  />
+                </div>
+
+                <div className="form-group-field" style={{ marginBottom: '10px' }}>
+                  <label className="field-label" style={{ fontSize: '11.5px' }}>Access Token (Clave Privada)</label>
+                  <input 
+                    type="password" 
+                    className="input-field" 
+                    placeholder="TEST-xxxx o APP_USR-xxxx" 
+                    value={gatewaysForm.mercadopagoAccessToken || ''} 
+                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, mercadopagoAccessToken: e.target.value })} 
+                  />
+                </div>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={gatewaysForm.mercadopagoSandbox} 
+                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, mercadopagoSandbox: e.target.checked })} 
+                  />
+                  <span>Modo Sandbox (Pruebas)</span>
+                </label>
+              </div>
+
+              {/* 2. Izipay */}
+              <div className="glass-card" style={{ padding: '16px', borderRadius: '10px', borderTop: '3px solid #ff0055' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <strong style={{ fontSize: '15px', color: '#ff0055' }}>Izipay</strong>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox"
+                      checked={gatewaysForm.izipayActive}
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, izipayActive: e.target.checked })}
+                    />
+                    <span>{gatewaysForm.izipayActive ? 'Habilitado' : 'Deshabilitado'}</span>
+                  </label>
+                </div>
+
+                <div className="form-group-field" style={{ marginBottom: '10px' }}>
+                  <label className="field-label" style={{ fontSize: '11.5px' }}>Public Key (Clave Pública)</label>
+                  <input 
+                    type="text" 
+                    className="input-field" 
+                    placeholder="Ej. 12345678:testpublickey_xxxx" 
+                    value={gatewaysForm.izipayPublicKey || ''} 
+                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, izipayPublicKey: e.target.value })} 
+                  />
+                </div>
+
+                <div className="form-group-field" style={{ marginBottom: '10px' }}>
+                  <label className="field-label" style={{ fontSize: '11.5px' }}>Clave HMAC-SHA256</label>
+                  <input 
+                    type="password" 
+                    className="input-field" 
+                    placeholder="Clave de firma para validación" 
+                    value={gatewaysForm.izipayShaKey || ''} 
+                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, izipayShaKey: e.target.value })} 
+                  />
+                </div>
+
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={gatewaysForm.izipaySandbox} 
+                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, izipaySandbox: e.target.checked })} 
+                  />
+                  <span>Modo Sandbox (Pruebas)</span>
+                </label>
+              </div>
+
+              {/* 3. PayPal */}
+              <div className="glass-card" style={{ padding: '16px', borderRadius: '10px', borderTop: '3px solid #003087' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <strong style={{ fontSize: '15px', color: '#003087' }}>PayPal</strong>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox"
+                      checked={gatewaysForm.paypalActive}
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, paypalActive: e.target.checked })}
+                    />
+                    <span>{gatewaysForm.paypalActive ? 'Habilitado' : 'Deshabilitado'}</span>
+                  </label>
+                </div>
+
+                <div className="form-group-field" style={{ marginBottom: '10px' }}>
+                  <label className="field-label" style={{ fontSize: '11.5px' }}>Client ID</label>
+                  <input 
+                    type="text" 
+                    className="input-field" 
+                    placeholder="AZ_xxxx" 
+                    value={gatewaysForm.paypalClientId || ''} 
+                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, paypalClientId: e.target.value })} 
+                  />
+                </div>
+
+                <div className="form-group-field" style={{ marginBottom: '10px' }}>
+                  <label className="field-label" style={{ fontSize: '11.5px' }}>Secret Key</label>
+                  <input 
+                    type="password" 
+                    className="input-field" 
+                    placeholder="E_xxxx" 
+                    value={gatewaysForm.paypalSecret || ''} 
+                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, paypalSecret: e.target.value })} 
+                  />
+                </div>
+
+                <div className="form-group-field">
+                  <label className="field-label" style={{ fontSize: '11.5px' }}>Modo de Entorno</label>
+                  <select 
+                    className="input-field"
+                    value={gatewaysForm.paypalMode || 'sandbox'}
+                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, paypalMode: e.target.value })}
+                  >
+                    <option value="sandbox">Sandbox (Pruebas)</option>
+                    <option value="live">Live (Producción Real)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 4. Culqi */}
+              <div className="glass-card" style={{ padding: '16px', borderRadius: '10px', borderTop: '3px solid #00c389' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <strong style={{ fontSize: '15px', color: '#00c389' }}>Culqi</strong>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox"
+                      checked={gatewaysForm.culqiActive}
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, culqiActive: e.target.checked })}
+                    />
+                    <span>{gatewaysForm.culqiActive ? 'Habilitado' : 'Deshabilitado'}</span>
+                  </label>
+                </div>
+
+                <div className="form-group-field" style={{ marginBottom: '10px' }}>
+                  <label className="field-label" style={{ fontSize: '11.5px' }}>Public Key (pk_test_... o pk_live_...)</label>
+                  <input 
+                    type="text" 
+                    className="input-field" 
+                    placeholder="pk_test_xxxx" 
+                    value={gatewaysForm.culqiPublicKey || ''} 
+                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, culqiPublicKey: e.target.value })} 
+                  />
+                </div>
+
+                <div className="form-group-field">
+                  <label className="field-label" style={{ fontSize: '11.5px' }}>Secret Key (sk_test_... o sk_live_...)</label>
+                  <input 
+                    type="password" 
+                    className="input-field" 
+                    placeholder="sk_test_xxxx" 
+                    value={gatewaysForm.culqiSecretKey || ''} 
+                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, culqiSecretKey: e.target.value })} 
+                  />
+                </div>
+              </div>
+
+              {/* 5. Transferencia Bancaria Manual */}
+              <div className="glass-card" style={{ padding: '16px', borderRadius: '10px', borderTop: '3px solid #10b981', gridColumn: 'span 2' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <strong style={{ fontSize: '15px', color: '#10b981' }}>Transferencia Bancaria Manual & Yape / Plin</strong>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox"
+                      checked={gatewaysForm.bankTransferActive}
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, bankTransferActive: e.target.checked })}
+                    />
+                    <span>{gatewaysForm.bankTransferActive ? 'Habilitado' : 'Deshabilitado'}</span>
+                  </label>
+                </div>
+
+                <div className="form-group-field">
+                  <label className="field-label" style={{ fontSize: '11.5px' }}>Cuentas Bancarias e Instrucciones de Pago</label>
+                  <textarea 
+                    className="input-field" 
+                    rows={4}
+                    value={gatewaysForm.bankTransferInfo || ''} 
+                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, bankTransferInfo: e.target.value })} 
+                    placeholder="BCP Soles: 191-xxxx CCI: 002-xxxx&#10;BBVA Soles: 0011-xxxx&#10;Yape / Plin: 999 888 777"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '28px' }}>
+              <button 
+                type="submit" 
+                className="btn btn-primary"
+                disabled={savingGateways}
+              >
+                {savingGateways ? 'Guardando Pasarelas...' : 'Guardar Configuración de Pasarelas'}
+              </button>
+            </div>
+          </form>
+
+          {/* Table of Payment Orders */}
+          <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '20px' }}>
+            <h3 style={{ margin: '0 0 12px 0', fontSize: '16px', color: 'var(--text-primary)' }}>
+              Órdenes de Pago y Regularizaciones de Clientes
+            </h3>
+
+            <div className="table-container">
+              <table className="custom-table">
+                <thead>
+                  <tr>
+                    <th>Cliente / Correo</th>
+                    <th>Plan Solicitado</th>
+                    <th>Monto</th>
+                    <th>Pasarela</th>
+                    <th>Referencia / Nota</th>
+                    <th>Fecha</th>
+                    <th style={{ textAlign: 'center' }}>Estado</th>
+                    <th style={{ textAlign: 'right' }}>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paymentOrders.length > 0 ? (
+                    paymentOrders.map(ord => (
+                      <tr key={ord.id}>
+                        <td>
+                          <strong>{ord.user?.name || 'Cliente'}</strong>
+                          <div style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>{ord.user?.email}</div>
+                        </td>
+                        <td>
+                          <span className="status-pill prod" style={{ fontSize: '11px' }}>
+                            {ord.plan?.name || 'Plan'}
+                          </span>
+                        </td>
+                        <td><strong>S/. {ord.amount}</strong></td>
+                        <td><span className="status-badge">{ord.gateway}</span></td>
+                        <td>
+                          <span style={{ fontSize: '12px' }}>{ord.gatewayRef || ord.notes || 'Sin datos adicionales'}</span>
+                        </td>
+                        <td>{new Date(ord.createdAt).toLocaleDateString()}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className={`status-pill ${ord.status === 'APPROVED' ? 'prod' : (ord.status === 'PENDING' ? 'beta' : 'error')}`}>
+                            {ord.status === 'APPROVED' ? 'Aprobado' : (ord.status === 'PENDING' ? 'Pendiente' : ord.status)}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          {ord.status === 'PENDING' ? (
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-sm"
+                              style={{ fontSize: '11.5px', padding: '3px 8px' }}
+                              onClick={() => handleApproveOrder(ord.id)}
+                              disabled={approvingOrderId === ord.id}
+                            >
+                              {approvingOrderId === ord.id ? 'Aprobando...' : 'Aprobar Pago'}
+                            </button>
+                          ) : (
+                            <span style={{ color: '#10b981', fontSize: '12px' }}>✓ Activado</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: '24px', color: 'var(--text-secondary)' }}>
+                        No hay órdenes de pago registradas todavía.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Plan Modal */}
+      <AdminPlanModal
+        isOpen={isPlanModalOpen}
+        onClose={() => {
+          setIsPlanModalOpen(false);
+          setSelectedPlanForEdit(null);
+        }}
+        plan={selectedPlanForEdit}
+        API_URL={API_URL}
+        authToken={authToken}
+        onSuccess={(msg) => {
+          showMsg(msg, 'success');
+          loadData();
+        }}
+      />
+
+      {/* Admin User Plan Modal */}
+      <AdminUserPlanModal
+        isOpen={isUserPlanModalOpen}
+        onClose={() => {
+          setIsUserPlanModalOpen(false);
+          setSelectedUserForPlan(null);
+        }}
+        user={selectedUserForPlan}
+        plans={plans}
+        API_URL={API_URL}
+        authToken={authToken}
+        onSuccess={(msg) => {
+          showMsg(msg, 'success');
+          loadData();
+        }}
+      />
 
       {/* Admin Reset Password Modal */}
       <AdminResetPasswordModal

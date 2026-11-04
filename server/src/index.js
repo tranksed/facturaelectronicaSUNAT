@@ -16,6 +16,13 @@ const companyRoutes = require('./routes/companies');
 const superadminRoutes = require('./routes/superadmin');
 const buzonSolRoutes = require('./routes/buzon-sol');
 const sunafilRoutes = require('./routes/sunafil');
+const { router: plansRoutes, seedDefaultPlans } = require('./routes/plans');
+const superadminPlansRoutes = require('./routes/superadmin-plans');
+const subscriptionRoutes = require('./routes/subscription');
+const tenantUsersRoutes = require('./routes/tenant-users');
+const apiKeysRoutes = require('./routes/api-keys');
+const externalApiRoutes = require('./routes/external-api');
+const { checkTenantQuota, incrementTenantDocCount } = require('./services/quota-service');
 const { authenticateToken, resolveActiveCompany } = require('./middleware/auth');
 
 const app = express();
@@ -26,10 +33,19 @@ app.use(cors());
 // Set limits for Base64 certificate upload
 app.use(express.json({ limit: '10mb' }));
 
+// Seed default SaaS plans on startup
+seedDefaultPlans().catch(err => console.error('Error seeding default plans:', err));
+
 // Mount Modular Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/companies', companyRoutes);
 app.use('/api/superadmin', superadminRoutes);
+app.use('/api/superadmin', superadminPlansRoutes);
+app.use('/api/plans', plansRoutes);
+app.use('/api/subscription', subscriptionRoutes);
+app.use('/api/tenant/users', tenantUsersRoutes);
+app.use('/api/tenant/apikeys', apiKeysRoutes);
+app.use('/api/v1/external', externalApiRoutes);
 app.use('/api/buzon-sol', buzonSolRoutes);
 app.use('/api/sunafil', sunafilRoutes);
 
@@ -360,6 +376,14 @@ app.post('/api/documents', async (req, res) => {
       }
     }
 
+    // Check subscription plan & document quota
+    if (company && company.userId) {
+      const quota = await checkTenantQuota(company.userId);
+      if (!quota.allowed) {
+        return res.status(403).json({ error: quota.error });
+      }
+    }
+
     if (!items || items.length === 0) {
       return res.status(400).json({ error: 'Debe ingresar al menos un ítem para emitir el comprobante.' });
     }
@@ -474,6 +498,10 @@ app.post('/api/documents', async (req, res) => {
     });
 
     // 6. Automatically archive all document assets to VPS/Local File Server
+    if (company && company.userId) {
+      await incrementTenantDocCount(company.userId);
+    }
+
     try {
       const a4Html = generateInvoiceHtml(savedInvoice, config, 'a4');
       const ticketHtml = generateInvoiceHtml(savedInvoice, config, 'ticket');

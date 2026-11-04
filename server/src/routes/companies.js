@@ -16,10 +16,11 @@ router.use(authenticateToken);
  */
 router.get('/', async (req, res) => {
   try {
+    const effectiveUserId = req.user.parentId || req.user.id;
     const companies = await prisma.company.findMany({
       where: req.user.role === 'SUPERADMIN' && req.query.all === 'true' 
         ? {} 
-        : { userId: req.user.id },
+        : { userId: effectiveUserId },
       orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }],
       include: {
         _count: {
@@ -55,6 +56,7 @@ router.get('/', async (req, res) => {
  */
 router.post('/', async (req, res) => {
   try {
+    const effectiveUserId = req.user.parentId || req.user.id;
     const { ruc, razonSocial, nombreComercial, direccion, contacto, piePagina } = req.body;
 
     if (!ruc || !/^\d{11}$/.test(ruc)) {
@@ -63,7 +65,7 @@ router.post('/', async (req, res) => {
 
     // Check if user already has this RUC
     const existing = await prisma.company.findFirst({
-      where: { userId: req.user.id, ruc }
+      where: { userId: effectiveUserId, ruc }
     });
     if (existing) {
       return res.status(400).json({ error: `Ya tienes registrada una empresa con el RUC ${ruc}.` });
@@ -87,11 +89,11 @@ router.post('/', async (req, res) => {
       }
     }
 
-    const companyCount = await prisma.company.count({ where: { userId: req.user.id } });
+    const companyCount = await prisma.company.count({ where: { userId: effectiveUserId } });
 
     const newCompany = await prisma.company.create({
       data: {
-        userId: req.user.id,
+        userId: effectiveUserId,
         ruc,
         razonSocial: finalRazon || `EMPRESA RUC ${ruc}`,
         nombreComercial: finalComercial || finalRazon,
@@ -119,8 +121,9 @@ router.post('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const effectiveUserId = req.user.parentId || req.user.id;
     const company = await prisma.company.findFirst({
-      where: req.user.role === 'SUPERADMIN' ? { id } : { id, userId: req.user.id }
+      where: req.user.role === 'SUPERADMIN' ? { id } : { id, userId: effectiveUserId }
     });
 
     if (!company) {
@@ -177,8 +180,9 @@ router.put('/:id', async (req, res) => {
       isDefault
     } = req.body;
 
+    const effectiveUserId = req.user.parentId || req.user.id;
     const company = await prisma.company.findFirst({
-      where: req.user.role === 'SUPERADMIN' ? { id } : { id, userId: req.user.id }
+      where: req.user.role === 'SUPERADMIN' ? { id } : { id, userId: effectiveUserId }
     });
 
     if (!company) {
@@ -243,8 +247,9 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const effectiveUserId = req.user.parentId || req.user.id;
     const company = await prisma.company.findFirst({
-      where: req.user.role === 'SUPERADMIN' ? { id } : { id, userId: req.user.id }
+      where: req.user.role === 'SUPERADMIN' ? { id } : { id, userId: effectiveUserId }
     });
 
     if (!company) {
@@ -271,8 +276,9 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/test', async (req, res) => {
   try {
     const { id } = req.params;
+    const effectiveUserId = req.user.parentId || req.user.id;
     const company = await prisma.company.findFirst({
-      where: req.user.role === 'SUPERADMIN' ? { id } : { id, userId: req.user.id }
+      where: req.user.role === 'SUPERADMIN' ? { id } : { id, userId: effectiveUserId }
     });
 
     if (!company) {

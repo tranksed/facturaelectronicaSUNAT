@@ -51,6 +51,7 @@ router.get('/users', async (req, res) => {
     const users = await prisma.user.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
+        plan: true,
         companies: {
           select: {
             id: true,
@@ -72,6 +73,10 @@ router.get('/users', async (req, res) => {
       email: u.email,
       role: u.role,
       status: u.status,
+      plan: u.plan,
+      planId: u.planId,
+      planExpiresAt: u.planExpiresAt,
+      docsIssuedCount: u.docsIssuedCount,
       createdAt: u.createdAt,
       companiesCount: u.companies.length,
       invoicesCount: u.companies.reduce((sum, c) => sum + (c._count?.invoices || 0), 0),

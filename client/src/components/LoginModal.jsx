@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   IconBuilding, 
   IconShield, 
   IconFileText, 
   IconCheck, 
   IconLock,
+  IconSpark,
+  IconUsers,
   ArrowRightIcon,
   PlusIcon,
   LoaderCircleIcon
@@ -17,9 +19,24 @@ export default function LoginModal({ isOpen, onLoginSuccess, branding, API_URL }
   const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
   const [ruc, setRuc] = useState('');
+  const [selectedPlanCode, setSelectedPlanCode] = useState('FREE');
+  const [plans, setPlans] = useState([]);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      fetch(`${API_URL}/api/plans`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data) && data.length > 0) {
+            setPlans(data);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen, API_URL]);
 
   if (!isOpen) return null;
 
@@ -42,7 +59,13 @@ export default function LoginModal({ isOpen, onLoginSuccess, branding, API_URL }
 
     const endpoint = isRegister ? '/api/auth/register' : '/api/auth/login';
     const payload = isRegister 
-      ? { email: email.trim(), password, name: name.trim(), ruc: ruc.trim() || undefined }
+      ? { 
+          email: email.trim(), 
+          password, 
+          name: name.trim(), 
+          ruc: ruc.trim() || undefined,
+          planCode: selectedPlanCode
+        }
       : { email: email.trim(), password };
 
     try {
@@ -66,9 +89,17 @@ export default function LoginModal({ isOpen, onLoginSuccess, branding, API_URL }
 
   const isRegistrationAllowed = branding?.allowRegistration ?? true;
 
+  // Fallback default plans if API hasn't loaded yet
+  const displayedPlans = plans.length > 0 ? plans : [
+    { code: 'FREE', name: 'Plan Gratuito', price: 0, docLimit: 30, userLimit: 1, durationDays: 30 },
+    { code: 'STARTER', name: 'Plan Starter', price: 29, docLimit: 100, userLimit: 2, durationDays: 30 },
+    { code: 'EMPRENDEDOR', name: 'Plan Emprendedor', price: 59, docLimit: 300, userLimit: 3, durationDays: 30, isPopular: true },
+    { code: 'CORPORATIVO', name: 'Plan Corporativo', price: 149, docLimit: -1, userLimit: 8, durationDays: 30 }
+  ];
+
   return (
     <div className="login-modal-overlay">
-      <div className="login-modal-card" style={{ maxWidth: isRegister ? '480px' : '440px' }}>
+      <div className="login-modal-card" style={{ maxWidth: isRegister ? '540px' : '440px' }}>
         {/* Branding Header */}
         <div className="login-brand-header">
           {branding?.logoUrl ? (
@@ -220,6 +251,70 @@ export default function LoginModal({ isOpen, onLoginSuccess, branding, API_URL }
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   required
                 />
+              </div>
+            )}
+
+            {isRegister && (
+              <div className="form-group-field" style={{ marginTop: '12px', marginBottom: '14px' }}>
+                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Elige tu Plan de Facturación</span>
+                  <span style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 600 }}>Prueba sin costo 30 días</span>
+                </label>
+                <div className="register-plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                  {displayedPlans.map(plan => {
+                    const isSelected = selectedPlanCode === plan.code;
+                    return (
+                      <div 
+                        key={plan.code}
+                        onClick={() => setSelectedPlanCode(plan.code)}
+                        style={{
+                          padding: '10px 12px',
+                          borderRadius: '10px',
+                          border: isSelected ? '2px solid var(--primary, #2563eb)' : '1px solid var(--border-color, #e2e8f0)',
+                          background: isSelected ? 'rgba(37, 99, 235, 0.08)' : 'var(--bg-card, #ffffff)',
+                          cursor: 'pointer',
+                          position: 'relative',
+                          transition: 'all 0.15s ease'
+                        }}
+                      >
+                        {plan.isPopular && (
+                          <span style={{
+                            position: 'absolute',
+                            top: '-7px',
+                            right: '8px',
+                            background: '#f59e0b',
+                            color: '#fff',
+                            fontSize: '9px',
+                            fontWeight: 700,
+                            padding: '1px 6px',
+                            borderRadius: '10px',
+                            textTransform: 'uppercase'
+                          }}>
+                            Popular
+                          </span>
+                        )}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <strong style={{ fontSize: '12.5px', color: 'var(--text-primary)' }}>{plan.name}</strong>
+                          <input 
+                            type="radio" 
+                            name="selectedPlan" 
+                            checked={isSelected} 
+                            onChange={() => setSelectedPlanCode(plan.code)} 
+                          />
+                        </div>
+                        <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--primary, #2563eb)', marginTop: '4px' }}>
+                          {plan.price === 0 ? 'GRATIS' : `S/. ${plan.price}`}
+                          <span style={{ fontSize: '10px', fontWeight: 400, color: 'var(--text-secondary)' }}>/mes</span>
+                        </div>
+                        <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', marginTop: '4px', lineHeight: 1.3 }}>
+                          📄 {plan.docLimit === -1 ? 'Comprobantes Ilimitados' : `Hasta ${plan.docLimit} docs/mes`}
+                          <br />
+                          👥 {plan.userLimit} {plan.userLimit === 1 ? 'usuario' : 'usuarios'}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

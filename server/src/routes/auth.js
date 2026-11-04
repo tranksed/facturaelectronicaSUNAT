@@ -13,7 +13,7 @@ const router = express.Router();
  */
 router.post('/register', async (req, res) => {
   try {
-    const { email, password, name, ruc } = req.body;
+    const { email, password, name, ruc, planId, planCode } = req.body;
 
     // Check platform settings
     const platform = await prisma.platformConfig.findFirst();
@@ -34,6 +34,23 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ error: 'Ya existe una cuenta registrada con este correo electrónico.' });
     }
 
+    // Resolve initial plan
+    let selectedPlan = null;
+    if (planId) {
+      selectedPlan = await prisma.plan.findUnique({ where: { id: planId } });
+    } else if (planCode) {
+      selectedPlan = await prisma.plan.findUnique({ where: { code: planCode } });
+    }
+    if (!selectedPlan) {
+      selectedPlan = await prisma.plan.findUnique({ where: { code: 'FREE' } });
+      if (!selectedPlan) {
+        selectedPlan = await prisma.plan.findFirst({ where: { isActive: true }, orderBy: { order: 'asc' } });
+      }
+    }
+
+    const durationDays = selectedPlan?.durationDays || 30;
+    const planExpiresAt = new Date(Date.now() + durationDays * 24 * 60 * 60 * 1000);
+
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
@@ -43,7 +60,14 @@ router.post('/register', async (req, res) => {
         passwordHash,
         name,
         role: 'USER',
-        status: 'ACTIVE'
+        status: 'ACTIVE',
+        planId: selectedPlan?.id || null,
+        planExpiresAt,
+        docsIssuedCount: 0,
+        tenantRole: 'ADMIN'
+      },
+      include: {
+        plan: true
       }
     });
 
@@ -87,7 +111,12 @@ router.post('/register', async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        tenantRole: user.tenantRole,
+        parentId: user.parentId,
+        plan: user.plan,
+        planExpiresAt: user.planExpiresAt,
+        docsIssuedCount: user.docsIssuedCount
       },
       companies: initialCompany ? [initialCompany] : []
     });
@@ -111,8 +140,9 @@ router.post('/login', async (req, res) => {
     const user = await prisma.user.findUnique({
       where: { email },
       include: {
-        companies: {
-          orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }]
+        plan: true,
+        parent: {
+          include: { plan: true }
         }
       }
     });
@@ -136,8 +166,20 @@ router.post('/login', async (req, res) => {
       { expiresIn: '30d' }
     );
 
+    // If sub-user, companies belong to parent; else to user
+    const effectiveUserId = user.parentId || user.id;
+    const userCompanies = await prisma.company.findMany({
+      where: { userId: effectiveUserId },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }]
+    });
+
+    // Active plan is parent's plan if sub-user
+    const effectivePlan = user.parent ? user.parent.plan : user.plan;
+    const effectiveExpires = user.parent ? user.parent.planExpiresAt : user.planExpiresAt;
+    const effectiveDocsCount = user.parent ? user.parent.docsIssuedCount : user.docsIssuedCount;
+
     // Filter sensitive fields from companies list
-    const companies = user.companies.map(c => ({
+    const companies = userCompanies.map(c => ({
       id: c.id,
       ruc: c.ruc,
       razonSocial: c.razonSocial,
@@ -156,7 +198,12 @@ router.post('/login', async (req, res) => {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        tenantRole: user.tenantRole || 'ADMIN',
+        parentId: user.parentId,
+        plan: effectivePlan,
+        planExpiresAt: effectiveExpires,
+        docsIssuedCount: effectiveDocsCount
       },
       companies
     });
@@ -174,22 +221,38 @@ router.get('/me', authenticateToken, async (req, res) => {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
       include: {
-        companies: {
-          orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }]
+        plan: true,
+        parent: {
+          include: { plan: true }
         }
       }
     });
 
+    const effectiveUserId = user.parentId || user.id;
+    const userCompanies = await prisma.company.findMany({
+      where: { userId: effectiveUserId },
+      orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }]
+    });
+
     const platform = await prisma.platformConfig.findFirst();
+
+    const effectivePlan = user.parent ? user.parent.plan : user.plan;
+    const effectiveExpires = user.parent ? user.parent.planExpiresAt : user.planExpiresAt;
+    const effectiveDocsCount = user.parent ? user.parent.docsIssuedCount : user.docsIssuedCount;
 
     res.json({
       user: {
         id: user.id,
         name: user.name,
         email: user.email,
-        role: user.role
+        role: user.role,
+        tenantRole: user.tenantRole || 'ADMIN',
+        parentId: user.parentId,
+        plan: effectivePlan,
+        planExpiresAt: effectiveExpires,
+        docsIssuedCount: effectiveDocsCount
       },
-      companies: user.companies.map(c => ({
+      companies: userCompanies.map(c => ({
         id: c.id,
         ruc: c.ruc,
         razonSocial: c.razonSocial,

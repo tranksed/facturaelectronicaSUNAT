@@ -8,16 +8,31 @@ generator client {
 }
 
 model User {
-  id           String    @id @default(uuid())
-  email        String    @unique
-  passwordHash String
-  name         String
-  role         String    @default("USER") // "USER" | "SUPERADMIN"
-  status       String    @default("ACTIVE") // "ACTIVE" | "SUSPENDED"
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id              String         @id @default(uuid())
+  email           String         @unique
+  passwordHash    String
+  name            String
+  role            String         @default("USER") // "USER" | "SUPERADMIN"
+  status          String         @default("ACTIVE") // "ACTIVE" | "SUSPENDED"
+  
+  // Plan & Quota Tracking
+  planId          String?
+  plan            Plan?          @relation(fields: [planId], references: [id])
+  planExpiresAt   DateTime?
+  docsIssuedCount Int            @default(0)
 
-  companies    Company[]
+  // Multi-user & Roles per Tenant
+  parentId        String?
+  parent          User?          @relation("TenantSubUsers", fields: [parentId], references: [id], onDelete: Cascade)
+  subUsers        User[]         @relation("TenantSubUsers")
+  tenantRole      String?        @default("ADMIN") // "ADMIN", "SUBADMIN", "CONTADOR", "OPERADOR"
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  companies       Company[]
+  apiKeys         ApiKey[]
+  paymentOrders   PaymentOrder[]
 }
 
 model Company {
@@ -124,8 +139,87 @@ model PlatformConfig {
   sftpUser             String?
   sftpPassword         String?
   sftpRemotePath       String?   @default("/var/storage/comprobantes")
-  
+
+  // Pasarelas de Pago (Configurables por SuperAdmin)
+  // 1. Izipay
+  izipayActive         Boolean   @default(false)
+  izipayPublicKey      String?
+  izipayClientAnswer   String?
+  izipayShaKey         String?
+  izipaySandbox        Boolean   @default(true)
+
+  // 2. Mercado Pago
+  mercadopagoActive    Boolean   @default(false)
+  mercadopagoPublicKey String?
+  mercadopagoAccessToken String?
+  mercadopagoSandbox   Boolean   @default(true)
+
+  // 3. PayPal
+  paypalActive         Boolean   @default(false)
+  paypalClientId       String?
+  paypalSecret         String?
+  paypalMode           String?   @default("sandbox") // "sandbox" | "live"
+
+  // 4. Culqi
+  culqiActive          Boolean   @default(false)
+  culqiPublicKey       String?
+  culqiSecretKey       String?
+
+  // 5. Transferencia Bancaria Manual
+  bankTransferActive   Boolean   @default(true)
+  bankTransferInfo     String?   @default("BCP Cta Cte Soles: 191-9876543-0-12 (CCI: 002-191-009876543012-34)\nBBVA Cta Cte Soles: 0011-0123-0100012345 (CCI: 011-123-000100012345-67)\nYape / Plin: 999 888 777 a nombre de APISUNAT PRO S.A.C.")
+
   updatedAt            DateTime  @updatedAt
+}
+
+model Plan {
+  id             String         @id @default(uuid())
+  name           String
+  code           String         @unique // "FREE", "STARTER", "EMPRENDEDOR", "CORPORATIVO"
+  description    String?
+  price          Float          @default(0)
+  currency       String         @default("PEN")
+  billingPeriod  String         @default("MONTHLY") // "MONTHLY" | "ANNUAL"
+  docLimit       Int            @default(30) // -1 para ilimitado
+  userLimit      Int            @default(1)
+  durationDays   Int            @default(30)
+  featuresJson   String         @default("[]")
+  isPopular      Boolean        @default(false)
+  isActive       Boolean        @default(true)
+  order          Int            @default(0)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  users          User[]
+  paymentOrders  PaymentOrder[]
+}
+
+model ApiKey {
+  id         String    @id @default(uuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String    // Ej: "WHMCS Producción", "ERP Principal"
+  key        String    @unique // Formato: "sk_live_..."
+  lastUsedAt DateTime?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+}
+
+model PaymentOrder {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId      String
+  plan        Plan      @relation(fields: [planId], references: [id])
+  gateway     String    // "IZIPAY" | "MERCADOPAGO" | "PAYPAL" | "CULQI" | "MANUAL"
+  amount      Float
+  currency    String    @default("PEN")
+  status      String    @default("PENDING") // "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED"
+  gatewayRef  String?   // External transaction / preference ID
+  metaJson    String?   @default("{}")
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Config {

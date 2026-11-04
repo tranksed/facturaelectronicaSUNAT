@@ -7,6 +7,9 @@ import ChangePasswordModal from './components/ChangePasswordModal';
 import BuzonSolPanel from './components/BuzonSolPanel';
 import SunafilPanel from './components/SunafilPanel';
 import GuiaIntegracion from './components/GuiaIntegracion';
+import TenantUsersPanel from './components/TenantUsersPanel';
+import TenantPlanModal from './components/TenantPlanModal';
+import ApiKeysPanel from './components/ApiKeysPanel';
 import {
   IconDashboard,
   IconInvoice,
@@ -23,6 +26,8 @@ import {
   IconTrash,
   IconExternalLink,
   IconDownload,
+  IconCrown,
+  IconUsers,
   IconCreditCard,
   IconSettings,
   IconCode,
@@ -75,6 +80,22 @@ export default function App() {
   const [activeCompany, setActiveCompany] = useState(null);
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [subscriptionInfo, setSubscriptionInfo] = useState(null);
+
+  const fetchSubscriptionInfo = async () => {
+    if (!authToken) return;
+    try {
+      const res = await fetch(`${API_URL}/api/subscription/my-plan`, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      if (res.ok) {
+        setSubscriptionInfo(await res.json());
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
 
   // Platform White-Label Branding
   const [branding, setBranding] = useState({
@@ -184,6 +205,7 @@ export default function App() {
         setCurrentUser(data.user);
         localStorage.setItem('currentUser', JSON.stringify(data.user));
         await fetchCompanies();
+        fetchSubscriptionInfo();
       } else {
         handleLogout();
       }
@@ -495,6 +517,7 @@ export default function App() {
           setActiveCompany(def);
         }
       }
+      fetchSubscriptionInfo();
     } catch (e) {
       console.error(e);
     }
@@ -570,6 +593,19 @@ export default function App() {
         onSuccess={(msg) => showMsg(msg, 'success')}
       />
 
+      {/* 4. Commercial Subscription & Quota Upgrade Modal */}
+      <TenantPlanModal
+        isOpen={isPlanModalOpen}
+        onClose={() => setIsPlanModalOpen(false)}
+        API_URL={API_URL}
+        authToken={authToken}
+        currentUser={currentUser}
+        onPlanUpdated={() => {
+          fetchSubscriptionInfo();
+          showMsg('Plan actualizado correctamente.', 'success');
+        }}
+      />
+
       {/* Sidebar Navigation */}
       <aside className="sidebar">
         <div className="sidebar-top">
@@ -638,6 +674,34 @@ export default function App() {
                 >
                   <span className="nav-item-icon"><IconBuilding size={18} /></span>
                   <span>Mi Empresa</span>
+                </button>
+              </li>
+              <li>
+                <button 
+                  className={`nav-item-btn ${activeTab === 'team' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('team')}
+                >
+                  <span className="nav-item-icon"><IconUsers size={18} /></span>
+                  <span>Mi Equipo</span>
+                </button>
+              </li>
+              <li>
+                <button 
+                  className={`nav-item-btn ${activeTab === 'api-docs' ? 'active' : ''}`}
+                  onClick={() => setActiveTab('api-docs')}
+                >
+                  <span className="nav-item-icon"><IconCode size={18} /></span>
+                  <span>API & WHMCS</span>
+                </button>
+              </li>
+              <li>
+                <button 
+                  className="nav-item-btn"
+                  onClick={() => setIsPlanModalOpen(true)}
+                  style={{ color: '#f59e0b' }}
+                >
+                  <span className="nav-item-icon"><IconCrown size={18} /></span>
+                  <span>Mi Plan & Pagos</span>
                 </button>
               </li>
               <li>
@@ -725,6 +789,35 @@ export default function App() {
                   <span>Nueva Empresa</span>
                 </button>
               </div>
+            )}
+
+            {/* Active Plan Quota Badge */}
+            {currentUser && currentUser.role !== 'SUPERADMIN' && (
+              <button 
+                type="button" 
+                className="btn-user-action" 
+                onClick={() => setIsPlanModalOpen(true)}
+                style={{ 
+                  display: 'inline-flex', 
+                  alignItems: 'center', 
+                  gap: '6px', 
+                  padding: '5px 12px', 
+                  background: 'rgba(245, 158, 11, 0.1)', 
+                  border: '1px solid #f59e0b', 
+                  color: '#b45309', 
+                  borderRadius: '20px', 
+                  fontWeight: 600, 
+                  fontSize: '12px', 
+                  cursor: 'pointer' 
+                }}
+                title="Ver mi plan y cuota mensual de comprobantes"
+              >
+                <IconCrown size={14} style={{ color: '#f59e0b' }} />
+                <span>{subscriptionInfo?.plan?.name || currentUser.plan?.name || 'Mi Plan'}</span>
+                <span style={{ fontSize: '11px', opacity: 0.85 }}>
+                  ({subscriptionInfo?.docsIssuedCount ?? currentUser.docsIssuedCount ?? 0}/{subscriptionInfo?.docLimit === -1 ? '∞' : (subscriptionInfo?.docLimit || 30)} docs)
+                </span>
+              </button>
             )}
 
             {/* Dark / Light Mode Switcher */}
@@ -1581,6 +1674,29 @@ export default function App() {
                 onNavigateToSettings={() => setActiveTab('settings')}
                 onNavigateToBuzon={() => setActiveTab('buzon-sol')}
                 onNavigateToSunafil={() => setActiveTab('sunafil')}
+              />
+            </div>
+          )}
+
+          {/* TAB: GESTIÓN DE EQUIPO (SUB-USUARIOS) */}
+          {activeTab === 'team' && (
+            <div className="animate-fade-in">
+              <TenantUsersPanel 
+                API_URL={API_URL}
+                authToken={authToken}
+                currentUser={currentUser}
+                onOpenUpgradePlan={() => setIsPlanModalOpen(true)}
+              />
+            </div>
+          )}
+
+          {/* TAB: API REST & WHMCS HOOKS */}
+          {activeTab === 'api-docs' && (
+            <div className="animate-fade-in">
+              <ApiKeysPanel 
+                API_URL={API_URL}
+                authToken={authToken}
+                currentUser={currentUser}
               />
             </div>
           )}

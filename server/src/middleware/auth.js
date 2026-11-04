@@ -53,6 +53,7 @@ function requireSuperAdmin(req, res, next) {
 async function resolveActiveCompany(req, res, next) {
   try {
     const companyId = req.headers['x-company-id'] || req.query.companyId || req.body.companyId;
+    const effectiveUserId = req.user.parentId || req.user.id;
     let company = null;
 
     if (companyId) {
@@ -60,7 +61,7 @@ async function resolveActiveCompany(req, res, next) {
         company = await prisma.company.findUnique({ where: { id: companyId } });
       } else {
         company = await prisma.company.findFirst({
-          where: { id: companyId, userId: req.user.id }
+          where: { id: companyId, userId: effectiveUserId }
         });
       }
     }
@@ -68,7 +69,7 @@ async function resolveActiveCompany(req, res, next) {
     if (!company) {
       // Find default or first company for user
       company = await prisma.company.findFirst({
-        where: { userId: req.user.id },
+        where: { userId: effectiveUserId },
         orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }]
       });
     }
