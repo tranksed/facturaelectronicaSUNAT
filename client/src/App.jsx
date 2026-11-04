@@ -30,7 +30,12 @@ import {
   IconKey,
   IconMail,
   IconBriefcase,
-  IconBookOpen
+  IconBookOpen,
+  DollarIcon,
+  CheckCircleIcon,
+  AlertIcon,
+  ClockIcon,
+  ArrowUpIcon
 } from './components/Icons';
 
 // Setup API endpoint (points to Express server on Port 3000 in dev)
@@ -784,25 +789,74 @@ export default function App() {
               </div>
 
               <div className="metrics-grid">
+                {/* 1. Facturado Aceptado */}
                 <div className="metric-card">
-                  <span className="metric-title">Facturado Aceptado</span>
-                  <span className="metric-value">S/. {totalBilled.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
-                  <span className="metric-desc">Ingreso validado por SUNAT</span>
+                  <div className="metric-card-header">
+                    <div className="metric-icon-box primary">
+                      <DollarIcon width={22} height={22} />
+                    </div>
+                    <span className="tailadmin-badge primary">
+                      <ArrowUpIcon width={12} height={12} />
+                      <span>Soles (PEN)</span>
+                    </span>
+                  </div>
+                  <div className="metric-card-body">
+                    <span className="metric-title">Facturado Aceptado</span>
+                    <h3 className="metric-value">S/. {totalBilled.toLocaleString('es-PE', { minimumFractionDigits: 2 })}</h3>
+                    <span className="metric-desc">Ingreso oficial validado por SUNAT</span>
+                  </div>
                 </div>
+
+                {/* 2. Aceptados */}
                 <div className="metric-card success">
-                  <span className="metric-title">Aceptados</span>
-                  <span className="metric-value">{acceptedCount}</span>
-                  <span className="metric-desc">Comprobantes con CDR Aprobado</span>
+                  <div className="metric-card-header">
+                    <div className="metric-icon-box success">
+                      <CheckCircleIcon width={22} height={22} />
+                    </div>
+                    <span className="tailadmin-badge success">
+                      <ArrowUpIcon width={12} height={12} />
+                      <span>CDR Ok</span>
+                    </span>
+                  </div>
+                  <div className="metric-card-body">
+                    <span className="metric-title">Aceptados</span>
+                    <h3 className="metric-value">{acceptedCount}</h3>
+                    <span className="metric-desc">Comprobantes con CDR Aprobado</span>
+                  </div>
                 </div>
+
+                {/* 3. Rechazados */}
                 <div className="metric-card error">
-                  <span className="metric-title">Rechazados</span>
-                  <span className="metric-value">{rejectedCount}</span>
-                  <span className="metric-desc">Rechazados por inconsistencia fiscal</span>
+                  <div className="metric-card-header">
+                    <div className="metric-icon-box error">
+                      <AlertIcon width={22} height={22} />
+                    </div>
+                    <span className="tailadmin-badge error">
+                      <span>Revisar</span>
+                    </span>
+                  </div>
+                  <div className="metric-card-body">
+                    <span className="metric-title">Rechazados</span>
+                    <h3 className="metric-value">{rejectedCount}</h3>
+                    <span className="metric-desc">Rechazados por inconsistencia fiscal</span>
+                  </div>
                 </div>
+
+                {/* 4. Errores / Pendientes */}
                 <div className="metric-card warning">
-                  <span className="metric-title">Errores/Pendientes</span>
-                  <span className="metric-value">{errorCount}</span>
-                  <span className="metric-desc">Fallo de comunicación con SUNAT</span>
+                  <div className="metric-card-header">
+                    <div className="metric-icon-box warning">
+                      <ClockIcon width={22} height={22} />
+                    </div>
+                    <span className="tailadmin-badge warning">
+                      <span>Pendientes</span>
+                    </span>
+                  </div>
+                  <div className="metric-card-body">
+                    <span className="metric-title">Errores / Pendientes</span>
+                    <h3 className="metric-value">{errorCount}</h3>
+                    <span className="metric-desc">Fallo de comunicación con SUNAT</span>
+                  </div>
                 </div>
               </div>
 
@@ -813,36 +867,50 @@ export default function App() {
                   <span>Sistemas Integrados</span>
                 </h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                  <div style={{ padding: '18px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
-                    <div className="flex-gap" style={{ marginBottom: '8px' }}>
-                      <IconTelegram size={22} />
-                      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Telegram Bot</h3>
+                  <div className="tailadmin-system-card">
+                    <div className="flex-between" style={{ marginBottom: '12px' }}>
+                      <div className="flex-gap">
+                        <div className="metric-icon-box primary" style={{ width: '42px', height: '42px', borderRadius: '10px' }}>
+                          <IconTelegram size={20} />
+                        </div>
+                        <div>
+                          <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>Telegram Bot</h3>
+                          <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Móvil & Chatbot</span>
+                        </div>
+                      </div>
+                      {activeCompany?.telegramToken ? (
+                        <span className="tailadmin-badge success">En línea</span>
+                      ) : (
+                        <span className="tailadmin-badge error">Sin Token</span>
+                      )}
                     </div>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '14px' }}>
-                      Emite facturas y boletas directamente desde el chat en cualquier dispositivo móvil.
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.45', margin: 0 }}>
+                      Emite facturas y boletas directamente desde el chat en cualquier dispositivo móvil mediante comandos rápidos.
                     </p>
-                    {activeCompany?.telegramToken ? (
-                      <span className="status-pill aceptado">Activo / En línea</span>
-                    ) : (
-                      <span className="status-pill error">Desactivado (Configurar token)</span>
-                    )}
                   </div>
 
-                  <div style={{ padding: '18px', background: 'var(--bg-card-subtle)', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
-                    <div className="flex-gap" style={{ marginBottom: '8px' }}>
-                      <IconServer size={22} />
-                      <h3 style={{ fontSize: '15px', fontWeight: 700 }}>Conexión Directa SUNAT</h3>
+                  <div className="tailadmin-system-card">
+                    <div className="flex-between" style={{ marginBottom: '12px' }}>
+                      <div className="flex-gap">
+                        <div className="metric-icon-box success" style={{ width: '42px', height: '42px', borderRadius: '10px' }}>
+                          <IconServer size={20} />
+                        </div>
+                        <div>
+                          <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>Conexión SUNAT</h3>
+                          <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Web Service UBL 2.1</span>
+                        </div>
+                      </div>
+                      {activeCompany?.hasCert ? (
+                        <span className={`tailadmin-badge ${activeCompany.isProduction ? 'success' : 'primary'}`}>
+                          {activeCompany.isProduction ? 'Producción' : 'Beta'}
+                        </span>
+                      ) : (
+                        <span className="tailadmin-badge error">Sin Certificado</span>
+                      )}
                     </div>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '14px' }}>
-                      Web Service oficial UBL 2.1 con certificado digital X.509 de la empresa.
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.45', margin: 0 }}>
+                      Web Service oficial UBL 2.1 firmado con certificado digital X.509 de la empresa y validación CDR en tiempo real.
                     </p>
-                    {activeCompany?.hasCert ? (
-                      <span className={`status-pill ${activeCompany.isProduction ? 'prod' : 'beta'}`}>
-                        Certificado Ok ({activeCompany.isProduction ? 'Producción' : 'Beta'})
-                      </span>
-                    ) : (
-                      <span className="status-pill error">Sin Certificado Digital</span>
-                    )}
                   </div>
                 </div>
               </div>
