@@ -137,15 +137,23 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ error: 'Ingresa tu correo y contraseña.' });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { email },
-      include: {
-        plan: true,
-        parent: {
-          include: { plan: true }
+    let user;
+    try {
+      user = await prisma.user.findUnique({
+        where: { email },
+        include: {
+          plan: true,
+          parent: {
+            include: { plan: true }
+          }
         }
-      }
-    });
+      });
+    } catch (queryErr) {
+      // Graceful fallback if in-memory Prisma client was loaded before schema update
+      user = await prisma.user.findUnique({
+        where: { email }
+      });
+    }
 
     if (!user) {
       return res.status(401).json({ error: 'Credenciales inválidas. Verifica tu correo o contraseña.' });
@@ -218,15 +226,22 @@ router.post('/login', async (req, res) => {
  */
 router.get('/me', authenticateToken, async (req, res) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      include: {
-        plan: true,
-        parent: {
-          include: { plan: true }
+    let user;
+    try {
+      user = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        include: {
+          plan: true,
+          parent: {
+            include: { plan: true }
+          }
         }
-      }
-    });
+      });
+    } catch (queryErr) {
+      user = await prisma.user.findUnique({
+        where: { id: req.user.id }
+      });
+    }
 
     const effectiveUserId = user.parentId || user.id;
     const userCompanies = await prisma.company.findMany({

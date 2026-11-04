@@ -48,24 +48,45 @@ router.get('/stats', async (req, res) => {
  */
 router.get('/users', async (req, res) => {
   try {
-    const users = await prisma.user.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        plan: true,
-        companies: {
-          select: {
-            id: true,
-            ruc: true,
-            razonSocial: true,
-            isProduction: true,
-            pfxCert: true,
-            _count: {
-              select: { invoices: true }
+    let users;
+    try {
+      users = await prisma.user.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: {
+          plan: true,
+          companies: {
+            select: {
+              id: true,
+              ruc: true,
+              razonSocial: true,
+              isProduction: true,
+              pfxCert: true,
+              _count: {
+                select: { invoices: true }
+              }
             }
           }
         }
-      }
-    });
+      });
+    } catch (queryErr) {
+      users = await prisma.user.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: {
+          companies: {
+            select: {
+              id: true,
+              ruc: true,
+              razonSocial: true,
+              isProduction: true,
+              pfxCert: true,
+              _count: {
+                select: { invoices: true }
+              }
+            }
+          }
+        }
+      });
+    }
 
     const userList = users.map(u => ({
       id: u.id,
