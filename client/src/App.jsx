@@ -161,6 +161,45 @@ export default function App() {
     }
   }, []);
 
+  // 2b. Handle return callback from Mercado Pago Checkout Pro
+  useEffect(() => {
+    if (!authToken) return;
+    const queryParams = new URLSearchParams(window.location.search);
+    const paymentStatus = queryParams.get('payment') || queryParams.get('collection_status') || queryParams.get('status');
+    const orderId = queryParams.get('order_id') || queryParams.get('external_reference');
+    const paymentId = queryParams.get('payment_id') || queryParams.get('collection_id');
+
+    if (paymentStatus === 'approved' && orderId) {
+      fetch(`${API_URL}/api/subscription/orders/${orderId}/verify-mercadopago`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ paymentId })
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.approved) {
+            showMsg('¡Pago aprobado en Mercado Pago! Tu plan comercial ha sido activado exitosamente.', 'success');
+            fetchSubscriptionInfo();
+          } else {
+            showMsg('Pago en Mercado Pago recibido: procesando acreditación de tu suscripción.', 'success');
+            fetchSubscriptionInfo();
+          }
+        })
+        .catch(err => {
+          console.error('Error al verificar retorno de Mercado Pago:', err);
+        })
+        .finally(() => {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        });
+    } else if (paymentStatus === 'failure') {
+      showMsg('El pago en Mercado Pago fue rechazado o cancelado. Puedes intentar nuevamente.', 'error');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [authToken]);
+
   // 3. Dynamic Primary Color Theme
   useEffect(() => {
     if (branding?.primaryColor) {

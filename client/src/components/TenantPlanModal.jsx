@@ -8,6 +8,8 @@ import {
   IconShield,
   IconSpark,
   IconAlertTriangle,
+  IconExternalLink,
+  IconRefresh,
   ArrowRightIcon,
   LoaderCircleIcon
 } from './Icons';
@@ -23,6 +25,7 @@ export default function TenantPlanModal({ isOpen, onClose, API_URL, authToken, c
   const [manualRefCode, setManualRefCode] = useState('');
   const [manualNotes, setManualNotes] = useState('');
   const [reportingPay, setReportingPay] = useState(false);
+  const [verifyingPay, setVerifyingPay] = useState(false);
   const [message, setMessage] = useState(null);
 
   useEffect(() => {
@@ -74,7 +77,8 @@ export default function TenantPlanModal({ isOpen, onClose, API_URL, authToken, c
         },
         body: JSON.stringify({
           planId: selectedPlan.id,
-          gateway: selectedGateway
+          gateway: selectedGateway,
+          returnUrl: window.location.href.split('?')[0]
         })
       });
 
@@ -95,6 +99,38 @@ export default function TenantPlanModal({ isOpen, onClose, API_URL, authToken, c
       setMessage({ text: 'Error de conexión: ' + e.message, type: 'error' });
     } finally {
       setProcessingCheckout(false);
+    }
+  };
+
+  const handleVerifyMercadoPago = async (orderId) => {
+    const targetId = orderId || checkoutResult?.orderId;
+    if (!targetId) return;
+    setVerifyingPay(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`${API_URL}/api/subscription/orders/${targetId}/verify-mercadopago`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`
+        }
+      });
+      const data = await res.json();
+      if (res.ok && data.approved) {
+        setMessage({ text: data.message, type: 'success' });
+        loadPlanData();
+        if (onPlanUpdated) onPlanUpdated();
+        setTimeout(() => {
+          setSelectedPlan(null);
+          setCheckoutResult(null);
+        }, 2500);
+      } else {
+        setMessage({ text: data.message || 'El pago aún se encuentra pendiente de acreditación en Mercado Pago.', type: 'error' });
+      }
+    } catch (e) {
+      setMessage({ text: 'Error al verificar pago: ' + e.message, type: 'error' });
+    } finally {
+      setVerifyingPay(false);
     }
   };
 
@@ -482,8 +518,127 @@ export default function TenantPlanModal({ isOpen, onClose, API_URL, authToken, c
                   </button>
                 </div>
               </>
+            ) : checkoutResult.gateway === 'MERCADOPAGO' ? (
+              /* Mercado Pago Checkout Pro Panel */
+              <div className="glass-card" style={{ padding: '24px', borderRadius: '12px', border: '1px solid rgba(0, 158, 227, 0.35)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#009ee3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '18px', boxShadow: '0 2px 8px rgba(0, 158, 227, 0.4)' }}>
+                      MP
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '17px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span>Mercado Pago Checkout Pro</span>
+                      </h4>
+                      <span style={{ fontSize: '12.5px', color: '#009ee3', fontWeight: 500 }}>
+                        Orden #{checkoutResult.orderId.substring(0, 8)} • Plan {checkoutResult.planName}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Total a abonar</div>
+                    <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                      {checkoutResult.currency} {Number(checkoutResult.amount).toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+
+                {checkoutResult.isSandbox && (
+                  <div style={{ background: 'rgba(245, 158, 11, 0.12)', border: '1px solid #f59e0b', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', fontSize: '12px', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <IconAlertTriangle size={16} />
+                    <span><strong>Modo Sandbox (Pruebas) Activo:</strong> Puedes usar tarjetas de prueba de Mercado Pago para simular el pago.</span>
+                  </div>
+                )}
+
+                <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', marginBottom: '20px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '10px' }}>
+                    💳 Métodos de Pago Disponibles en Checkout Pro:
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-primary)', background: 'var(--bg-card-subtle)', padding: '6px 10px', borderRadius: '6px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#730d88', display: 'inline-block' }}></span>
+                      <span><strong>Yape</strong> (QR o Clave)</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-primary)', background: 'var(--bg-card-subtle)', padding: '6px 10px', borderRadius: '6px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#009ee3', display: 'inline-block' }}></span>
+                      <span><strong>Tarjetas</strong> Visa/Master</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-primary)', background: 'var(--bg-card-subtle)', padding: '6px 10px', borderRadius: '6px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
+                      <span><strong>Saldo</strong> Mercado Pago</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-primary)', background: 'var(--bg-card-subtle)', padding: '6px 10px', borderRadius: '6px' }}>
+                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }}></span>
+                      <span><strong>PagoEfectivo</strong></span>
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '18px' }}>
+                  <a 
+                    href={checkoutResult.checkoutUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-primary"
+                    style={{
+                      background: '#009ee3',
+                      borderColor: '#009ee3',
+                      color: '#ffffff',
+                      textAlign: 'center',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '10px',
+                      padding: '14px 20px',
+                      fontSize: '15.5px',
+                      fontWeight: 700,
+                      textDecoration: 'none',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 14px rgba(0, 158, 227, 0.4)',
+                      transition: 'transform 0.2s ease'
+                    }}
+                  >
+                    <span>Ir a Pagar con Mercado Pago / Yape</span>
+                    <IconExternalLink size={18} />
+                  </a>
+
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={verifyingPay}
+                    onClick={() => handleVerifyMercadoPago(checkoutResult.orderId)}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '11px', borderRadius: '8px', fontWeight: 600 }}
+                  >
+                    {verifyingPay ? (
+                      <>
+                        <LoaderCircleIcon className="animate-spin" size={16} />
+                        <span>Verificando acreditación en Mercado Pago...</span>
+                      </>
+                    ) : (
+                      <>
+                        <IconRefresh size={16} />
+                        <span>Ya completé mi pago • Verificar Activación</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary"
+                    onClick={() => setCheckoutResult(null)}
+                    style={{ fontSize: '12.5px', padding: '6px 12px' }}
+                  >
+                    Volver a métodos de pago
+                  </button>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                    🔒 Transacción protegida por Mercado Pago y SSL
+                  </span>
+                </div>
+              </div>
             ) : (
-              /* Checkout Result / Gateway Action */
+              /* Checkout Result / Manual or Other Gateway Action */
               <div className="glass-card" style={{ padding: '20px', borderRadius: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
                   <IconShield size={20} style={{ color: '#10b981' }} />

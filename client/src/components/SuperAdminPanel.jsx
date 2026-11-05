@@ -25,6 +25,8 @@ import {
   IconPlus,
   IconPaypal,
   IconDollar,
+  IconCopy,
+  IconExternalLink,
   LoaderCircleIcon
 } from './Icons';
 
@@ -60,6 +62,7 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
     bankTransferInfo: ''
   });
   const [savingGateways, setSavingGateways] = useState(false);
+  const [copiedWebhook, setCopiedWebhook] = useState(false);
   const [paymentOrders, setPaymentOrders] = useState([]);
   const [approvingOrderId, setApprovingOrderId] = useState(null);
   
@@ -1401,7 +1404,7 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
                   />
                 </div>
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer', marginBottom: '12px' }}>
                   <input 
                     type="checkbox" 
                     checked={gatewaysForm.mercadopagoSandbox} 
@@ -1409,6 +1412,32 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
                   />
                   <span>Modo Sandbox (Pruebas)</span>
                 </label>
+
+                {/* Webhook / IPN Notification URL */}
+                <div style={{ padding: '10px 12px', background: 'var(--bg-card-subtle)', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '11px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Webhook IPN (Notificaciones):</span>
+                    <button 
+                      type="button"
+                      onClick={() => {
+                        const url = `${window.location.origin}/api/subscription/webhook/mercadopago`;
+                        navigator.clipboard.writeText(url);
+                        setCopiedWebhook(true);
+                        setTimeout(() => setCopiedWebhook(false), 2000);
+                      }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: copiedWebhook ? 'var(--success)' : '#009ee3', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}
+                    >
+                      <IconCopy size={12} />
+                      <span>{copiedWebhook ? '¡Copiado!' : 'Copiar URL'}</span>
+                    </button>
+                  </div>
+                  <code style={{ fontSize: '10.5px', color: '#009ee3', wordBreak: 'break-all', display: 'block', background: 'var(--bg-card)', padding: '5px 8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
+                    {`${window.location.origin}/api/subscription/webhook/mercadopago`}
+                  </code>
+                  <span style={{ display: 'block', marginTop: '6px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                    Pega esta URL en tu Panel de Mercado Pago Developers &gt; Webhooks para activar pagos aprobados automáticamente.
+                  </span>
+                </div>
               </div>
 
               {/* 2. Izipay */}
