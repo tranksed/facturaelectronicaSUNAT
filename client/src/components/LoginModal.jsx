@@ -95,132 +95,153 @@ export default function LoginModal({ isOpen, onLoginSuccess, branding, API_URL }
   return (
     <div className="auth-split-wrapper animate-fade-in">
       {/* =========================================================================
-          PANEL IZQUIERDO: Marca, Propuesta de Valor e Ilustración del Servicio SUNAT
+          PANEL IZQUIERDO: CloudPeru Hero con Ilustración Vectorial y Factura
           ========================================================================= */}
-      <div className="auth-split-left">
-        {/* Encabezado de Marca */}
-        <div className="auth-left-brand">
+      <aside className="cp-hero">
+        {/* Ilustración de fondo abstracta */}
+        <div className="cp-art" aria-hidden="true">
+          <svg viewBox="0 0 600 900" preserveAspectRatio="xMaxYMid slice">
+            {/* Conexiones */}
+            <path className="d" d="M470 330 C 560 400, 560 520, 470 590"/>
+            <path className="d" d="M330 690 C 320 760, 260 800, 210 820"/>
+
+            {/* Comprobante 1 */}
+            <g transform="rotate(-8 300 210)">
+              <rect className="s" x="170" y="60" width="260" height="320" rx="14"/>
+              <line className="la" x1="200" y1="98" x2="290" y2="98"/>
+              <line className="l" x1="200" y1="122" x2="340" y2="122"/>
+              <line className="l" x1="200" y1="170" x2="400" y2="170"/>
+              <line className="l" x1="200" y1="200" x2="370" y2="200"/>
+              <line className="l" x1="200" y1="230" x2="390" y2="230"/>
+              <line className="l" x1="200" y1="260" x2="340" y2="260"/>
+              <line className="la" x1="320" y1="320" x2="400" y2="320"/>
+              <rect className="q" x="200" y="300" width="10" height="10"/>
+              <rect className="q" x="214" y="300" width="10" height="10"/>
+              <rect className="q" x="228" y="314" width="10" height="10"/>
+              <rect className="q" x="200" y="328" width="10" height="10"/>
+              <rect className="q" x="228" y="328" width="10" height="10"/>
+              <rect className="q" x="214" y="342" width="10" height="10"/>
+            </g>
+
+            {/* Comprobante 2 */}
+            <g transform="rotate(5 360 560)">
+              <rect className="s" x="230" y="420" width="260" height="300" rx="14"/>
+              <line className="la" x1="260" y1="458" x2="350" y2="458"/>
+              <line className="l" x1="260" y1="482" x2="400" y2="482"/>
+              <line className="l" x1="260" y1="530" x2="460" y2="530"/>
+              <line className="l" x1="260" y1="560" x2="430" y2="560"/>
+              <line className="l" x1="260" y1="590" x2="450" y2="590"/>
+              <line className="la" x1="380" y1="660" x2="460" y2="660"/>
+            </g>
+
+            {/* Nodo firma */}
+            <circle className="n" cx="470" cy="330" r="26"/>
+            <path className="ok" d="M470 318 l9 4 v7 c0 6-9 11-9 11 s-9-5-9-11 v-7z" style={{ stroke: 'rgba(167,139,250,.6)', strokeWidth: 1.8 }}/>
+
+            {/* Nodo CDR */}
+            <circle className="n" cx="200" cy="820" r="30" style={{ stroke: 'rgba(52,211,153,.55)' }}/>
+            <path className="ok" d="M188 820 l8 8 l16 -16"/>
+            <text className="t" x="245" y="825" style={{ fill: 'rgba(52,211,153,.6)' }}>CDR</text>
+          </svg>
+        </div>
+
+        {/* Brand Header */}
+        <div className="cp-brand">
           {branding?.logoUrl ? (
-            <img src={branding.logoUrl} alt="Logo" className="auth-left-logo-img" />
+            <div className="cp-logo" style={{ background: 'transparent' }}>
+              <img src={branding.logoUrl} alt="Logo" />
+            </div>
           ) : (
             <div 
-              className="auth-left-logo-avatar" 
-              style={{ background: branding?.primaryColor || 'var(--primary, #2563eb)' }}
+              className="cp-logo"
+              style={{ background: branding?.primaryColor ? `linear-gradient(135deg, ${branding.primaryColor}, #6366f1)` : undefined }}
             >
-              {(branding?.platformName || 'SUNAT').substring(0, 2).toUpperCase()}
+              {(branding?.platformName || 'CLOUDPERU').substring(0, 2).toUpperCase()}
             </div>
           )}
-          <span className="auth-left-brand-text">
-            {branding?.platformName || 'APISUNAT PRO'}
-          </span>
-          <span className="auth-left-badge">
-            SUNAT UBL 2.1
-          </span>
-        </div>
-
-        {/* Contenido Central: Ilustración Real del Servicio + Hero Text */}
-        <div className="auth-left-content">
-          {/* Tarjeta Visual Ilustrativa del Servicio de Facturación Electrónica */}
-          <div className="auth-invoice-card">
-            <div className="auth-card-top">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span className="auth-sunat-pill">SUNAT UBL 2.1</span>
-                <div>
-                  <div className="auth-doc-name">FACTURA ELECTRÓNICA</div>
-                  <div className="auth-doc-folio">F001 - 00014280</div>
-                </div>
-              </div>
-              <div className="auth-status-accepted">
-                <span className="auth-pulse-dot"></span>
-                <span>CDR ACEPTADO</span>
-              </div>
-            </div>
-
-            <div className="auth-meta-grid">
-              <div className="auth-meta-col">
-                <div className="auth-meta-lbl">EMISOR</div>
-                <div className="auth-meta-val">20608974512 • SAAS PERÚ S.A.C.</div>
-              </div>
-              <div className="auth-meta-col">
-                <div className="auth-meta-lbl">CLIENTE</div>
-                <div className="auth-meta-val">20554123891 • CORPORACIÓN DIGITAL</div>
-              </div>
-            </div>
-
-            <div className="auth-item-box">
-              <span>1x Suscripción Mensual Facturación Cloud</span>
-              <span style={{ fontWeight: 700, color: '#38bdf8' }}>S/ 127.12</span>
-            </div>
-
-            <div className="auth-totals-row">
-              <div>
-                <span style={{ color: '#94a3b8', fontSize: '11px' }}>Subtotal: S/ 127.12</span>
-                <span style={{ color: '#94a3b8', fontSize: '11px', marginLeft: '10px' }}>IGV (18%): S/ 22.88</span>
-              </div>
-              <div>
-                <span style={{ color: '#94a3b8', fontSize: '11px', marginRight: '6px' }}>TOTAL:</span>
-                <span className="auth-total-val">S/ 150.00 PEN</span>
-              </div>
-            </div>
-
-            <div className="auth-card-bottom">
-              <div className="auth-qr-code">
-                <svg viewBox="0 0 32 32" width="34" height="34" fill="currentColor">
-                  <rect x="0" y="0" width="10" height="10" rx="1.5" fill="none" stroke="currentColor" strokeWidth="2" />
-                  <rect x="3" y="3" width="4" height="4" rx="0.5" />
-                  <rect x="22" y="0" width="10" height="10" rx="1.5" fill="none" stroke="currentColor" strokeWidth="2" />
-                  <rect x="25" y="3" width="4" height="4" rx="0.5" />
-                  <rect x="0" y="22" width="10" height="10" rx="1.5" fill="none" stroke="currentColor" strokeWidth="2" />
-                  <rect x="3" y="25" width="4" height="4" rx="0.5" />
-                  <rect x="13" y="2" width="5" height="5" rx="0.5" />
-                  <rect x="13" y="13" width="6" height="6" rx="0.5" />
-                  <rect x="22" y="13" width="5" height="5" rx="0.5" />
-                  <rect x="13" y="22" width="5" height="5" rx="0.5" />
-                  <rect x="21" y="22" width="8" height="3" rx="0.5" />
-                  <rect x="26" y="27" width="5" height="4" rx="0.5" />
-                </svg>
-              </div>
-              <div className="auth-hash-info">
-                <div>Firma Digital XML: <code>4k9JzM8qWv2n0...=</code></div>
-                <div>Validez fiscal inmediata ante SUNAT • Certificado CDT</div>
-              </div>
-            </div>
-          </div>
-
-          <h1 className="auth-left-title">
-            Gestión de tu facturación, sin perder el hilo.
-          </h1>
-          <p className="auth-left-desc">
-            Clientes, comprobantes UBL 2.1, facturación y cobranza en un solo lugar — construido para empresas peruanas.
-          </p>
-
-          {/* Chips de Características del Servicio */}
-          <div className="auth-chips-grid">
-            <div className="auth-chip-item">
-              <span style={{ color: '#eab308' }}>⚡</span>
-              <span>CDR SUNAT Inmediato</span>
-            </div>
-            <div className="auth-chip-item">
-              <span style={{ color: '#38bdf8' }}>🔐</span>
-              <span>Certificado Digital CDT</span>
-            </div>
-            <div className="auth-chip-item">
-              <span style={{ color: '#a855f7' }}>🏢</span>
-              <span>Multiempresa & Multi-RUC</span>
-            </div>
-            <div className="auth-chip-item">
-              <span style={{ color: '#10b981' }}>🔌</span>
-              <span>API REST & WHMCS</span>
-            </div>
+          <div className="cp-name">
+            {branding?.platformName || 'CLOUDPERU'} <span>{branding?.platformSubtitle || 'API SUNAT'}</span>
           </div>
         </div>
 
-        {/* Pie de Página Izquierdo */}
-        <div className="auth-left-footer">
-          <span>© {new Date().getFullYear()} {branding?.platformName || 'Facturación SaaS'}. Validez Fiscal Oficial SUNAT.</span>
-          <span>🔒 Conexión Cifrada SSL 256-bit</span>
+        {/* Contenido Principal */}
+        <div className="cp-main">
+          <div>
+            <div className="cp-eyebrow">FACTURACIÓN ELECTRÓNICA · UBL 2.1</div>
+            <h1 className="cp-h1">
+              Gestión de tu facturación, <em>sin perder el hilo.</em>
+            </h1>
+            <p className="cp-sub">
+              Clientes, comprobantes y cobranza en un solo lugar, hecho para empresas peruanas.
+            </p>
+          </div>
+
+          {/* Tarjeta Factura */}
+          <div className="cp-card">
+            <div className="cp-card-h">
+              <div className="cp-doc">
+                <small>FACTURA ELECTRÓNICA</small>
+                <code>F001-00014280</code>
+              </div>
+              <div className="cp-ok">
+                <i></i>CDR aceptado
+              </div>
+            </div>
+            <div className="cp-rows">
+              <div className="cp-row">
+                <span>Cliente</span>
+                <span>Corporación Digital S.A.C.</span>
+              </div>
+              <div className="cp-row">
+                <span>Suscripción Facturación Cloud</span>
+                <span>S/ 127.12</span>
+              </div>
+              <div className="cp-row">
+                <span>IGV (18%)</span>
+                <span>S/ 22.88</span>
+              </div>
+            </div>
+            <div className="cp-tot">
+              <small>Total</small>
+              <b>S/ 150.00</b>
+            </div>
+          </div>
+
+          {/* Features */}
+          <ul className="cp-feats">
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6 9 17l-5-5"/>
+              </svg>
+              CDR SUNAT inmediato
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6 9 17l-5-5"/>
+              </svg>
+              Certificado digital CDT
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6 9 17l-5-5"/>
+              </svg>
+              Multiempresa y multi-RUC
+            </li>
+            <li>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20 6 9 17l-5-5"/>
+              </svg>
+              API REST y WHMCS
+            </li>
+          </ul>
         </div>
-      </div>
+
+        {/* Pie de Página */}
+        <div className="cp-foot">
+          <span>© {new Date().getFullYear()} {branding?.platformName || 'CLOUDPERU'} {branding?.platformSubtitle || 'API SUNAT'}</span>
+          <span>Conexión cifrada SSL</span>
+        </div>
+      </aside>
 
       {/* =========================================================================
           PANEL DERECHO: Formulario Esterilizado de Inicio de Sesión y Registro
