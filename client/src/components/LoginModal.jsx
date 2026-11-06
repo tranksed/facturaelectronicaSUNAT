@@ -118,15 +118,8 @@ export default function LoginModal({ isOpen, onLoginSuccess, branding, API_URL }
           </span>
         </div>
 
-        {/* Contenido Central: Hero Text + Ilustración Real del Servicio */}
+        {/* Contenido Central: Ilustración Real del Servicio + Hero Text */}
         <div className="auth-left-content">
-          <h1 className="auth-left-title">
-            Gestión de tu facturación electrónica, sin perder el hilo.
-          </h1>
-          <p className="auth-left-desc">
-            Comprobantes UBL 2.1, CDR automático de SUNAT, facturación recurrente y multiempresa en un solo lugar — construido para empresas peruanas y desarrolladores.
-          </p>
-
           {/* Tarjeta Visual Ilustrativa del Servicio de Facturación Electrónica */}
           <div className="auth-invoice-card">
             <div className="auth-card-top">
@@ -194,6 +187,13 @@ export default function LoginModal({ isOpen, onLoginSuccess, branding, API_URL }
             </div>
           </div>
 
+          <h1 className="auth-left-title">
+            Gestión de tu facturación, sin perder el hilo.
+          </h1>
+          <p className="auth-left-desc">
+            Clientes, comprobantes UBL 2.1, facturación y cobranza en un solo lugar — construido para empresas peruanas.
+          </p>
+
           {/* Chips de Características del Servicio */}
           <div className="auth-chips-grid">
             <div className="auth-chip-item">
@@ -252,7 +252,7 @@ export default function LoginModal({ isOpen, onLoginSuccess, branding, API_URL }
           <p className="auth-card-subtitle">
             {isRegister 
               ? 'Comienza tus 30 días de prueba gratuita sin compromiso.' 
-              : 'Accede al panel de control de tu empresa.'}
+              : 'Accede al panel de tu empresa.'}
           </p>
 
           {/* Alerta de Error */}
@@ -336,9 +336,16 @@ export default function LoginModal({ isOpen, onLoginSuccess, branding, API_URL }
                 <label className="auth-field-label">
                   <span>Contraseña</span>
                   {!isRegister && (
-                    <span style={{ fontSize: '11.5px', color: 'var(--text-muted, #64748b)' }}>
-                      Acceso seguro SSL
-                    </span>
+                    <a 
+                      href="#recuperar" 
+                      className="auth-forgot-link"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setError('Para restablecer tu contraseña, por favor contacta al administrador de tu empresa o a soporte técnico.');
+                      }}
+                    >
+                      ¿Olvidaste tu contraseña?
+                    </a>
                   )}
                 </label>
                 <div className="auth-input-wrapper">
