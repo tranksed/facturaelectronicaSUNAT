@@ -28,6 +28,61 @@ export default function TenantPlanModal({ isOpen, onClose, API_URL, authToken, c
   const [verifyingPay, setVerifyingPay] = useState(false);
   const [message, setMessage] = useState(null);
 
+  const getActiveGatewaysList = (data = subData) => {
+    const list = [];
+    const ag = data?.availableGateways;
+    if (!ag) return list;
+
+    if (ag.mercadopago) {
+      list.push({
+        id: 'MERCADOPAGO',
+        name: 'Mercado Pago / Yape',
+        subtitle: 'Paga al instante con Yape, Tarjetas Débito/Crédito o Saldo',
+        badge: 'Recomendado',
+        icon: '⚡',
+        color: '#009ee3'
+      });
+    }
+    if (ag.izipay) {
+      list.push({
+        id: 'IZIPAY',
+        name: 'Izipay Perú',
+        subtitle: 'Tarjetas de Crédito y Débito Visa/Mastercard',
+        icon: '💳',
+        color: '#ff0055'
+      });
+    }
+    if (ag.paypal) {
+      list.push({
+        id: 'PAYPAL',
+        name: 'PayPal',
+        subtitle: 'Pago internacional seguro en USD / Tarjeta',
+        icon: '🅿️',
+        color: '#003087'
+      });
+    }
+    if (ag.culqi) {
+      list.push({
+        id: 'CULQI',
+        name: 'Culqi',
+        subtitle: 'Tarjetas locales y billeteras digitales',
+        icon: '📱',
+        color: '#00c389'
+      });
+    }
+    if (ag.bankTransfer) {
+      list.push({
+        id: 'MANUAL',
+        name: 'Transferencia Bancaria',
+        subtitle: 'Depósito a cuenta BCP, BBVA o Yape / Plin',
+        icon: '🏦',
+        color: '#10b981'
+      });
+    }
+
+    return list;
+  };
+
   useEffect(() => {
     if (isOpen) {
       loadPlanData();
@@ -47,7 +102,13 @@ export default function TenantPlanModal({ isOpen, onClose, API_URL, authToken, c
       const subJson = await subRes.json();
       const plansJson = await plansRes.json();
 
-      if (subRes.ok) setSubData(subJson);
+      if (subRes.ok) {
+        setSubData(subJson);
+        const activeList = getActiveGatewaysList(subJson);
+        if (activeList.length > 0 && !activeList.some(g => g.id === selectedGateway)) {
+          setSelectedGateway(activeList[0].id);
+        }
+      }
       if (plansRes.ok && Array.isArray(plansJson)) setAllPlans(plansJson);
     } catch (e) {
       console.error('Error loading subscription:', e);
@@ -61,6 +122,11 @@ export default function TenantPlanModal({ isOpen, onClose, API_URL, authToken, c
   const handleStartCheckout = async (plan) => {
     setSelectedPlan(plan);
     setCheckoutResult(null);
+    setMessage(null);
+    const activeList = getActiveGatewaysList(subData);
+    if (activeList.length > 0 && !activeList.some(g => g.id === selectedGateway)) {
+      setSelectedGateway(activeList[0].id);
+    }
   };
 
   const handleExecutePayment = async () => {
@@ -359,138 +425,95 @@ export default function TenantPlanModal({ isOpen, onClose, API_URL, authToken, c
 
             {!checkoutResult ? (
               <>
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', color: 'var(--text-primary)' }}>
-                  Selecciona la Pasarela de Pago:
-                </h4>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', marginBottom: '18px' }}>
-                  {/* Mercado Pago */}
-                  <label 
-                    style={{
-                      padding: '12px 10px',
-                      borderRadius: '10px',
-                      border: selectedGateway === 'MERCADOPAGO' ? '2px solid #009ee3' : '1px solid var(--border-color)',
-                      background: selectedGateway === 'MERCADOPAGO' ? 'rgba(0, 158, 227, 0.08)' : 'var(--bg-card)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '6px',
-                      textAlign: 'center'
-                    }}
-                  >
-                    <input 
-                      type="radio" 
-                      name="gateway" 
-                      checked={selectedGateway === 'MERCADOPAGO'} 
-                      onChange={() => setSelectedGateway('MERCADOPAGO')} 
-                    />
-                    <strong style={{ fontSize: '13px', color: '#009ee3' }}>Mercado Pago</strong>
-                    <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Tarjetas, QR & Saldo</span>
-                  </label>
-
-                  {/* Izipay */}
-                  <label 
-                    style={{
-                      padding: '12px 10px',
-                      borderRadius: '10px',
-                      border: selectedGateway === 'IZIPAY' ? '2px solid #ff0055' : '1px solid var(--border-color)',
-                      background: selectedGateway === 'IZIPAY' ? 'rgba(255, 0, 85, 0.08)' : 'var(--bg-card)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '6px',
-                      textAlign: 'center'
-                    }}
-                  >
-                    <input 
-                      type="radio" 
-                      name="gateway" 
-                      checked={selectedGateway === 'IZIPAY'} 
-                      onChange={() => setSelectedGateway('IZIPAY')} 
-                    />
-                    <strong style={{ fontSize: '13px', color: '#ff0055' }}>Izipay</strong>
-                    <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Visa / Mastercard PE</span>
-                  </label>
-
-                  {/* PayPal */}
-                  <label 
-                    style={{
-                      padding: '12px 10px',
-                      borderRadius: '10px',
-                      border: selectedGateway === 'PAYPAL' ? '2px solid #003087' : '1px solid var(--border-color)',
-                      background: selectedGateway === 'PAYPAL' ? 'rgba(0, 48, 135, 0.08)' : 'var(--bg-card)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '6px',
-                      textAlign: 'center'
-                    }}
-                  >
-                    <input 
-                      type="radio" 
-                      name="gateway" 
-                      checked={selectedGateway === 'PAYPAL'} 
-                      onChange={() => setSelectedGateway('PAYPAL')} 
-                    />
-                    <strong style={{ fontSize: '13px', color: '#003087' }}>PayPal</strong>
-                    <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Pago Internacional</span>
-                  </label>
-
-                  {/* Culqi */}
-                  <label 
-                    style={{
-                      padding: '12px 10px',
-                      borderRadius: '10px',
-                      border: selectedGateway === 'CULQI' ? '2px solid #00c389' : '1px solid var(--border-color)',
-                      background: selectedGateway === 'CULQI' ? 'rgba(0, 195, 137, 0.08)' : 'var(--bg-card)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '6px',
-                      textAlign: 'center'
-                    }}
-                  >
-                    <input 
-                      type="radio" 
-                      name="gateway" 
-                      checked={selectedGateway === 'CULQI'} 
-                      onChange={() => setSelectedGateway('CULQI')} 
-                    />
-                    <strong style={{ fontSize: '13px', color: '#00c389' }}>Culqi</strong>
-                    <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Tarjetas & Yape</span>
-                  </label>
-
-                  {/* Manual / Transferencia */}
-                  <label 
-                    style={{
-                      padding: '12px 10px',
-                      borderRadius: '10px',
-                      border: selectedGateway === 'MANUAL' ? '2px solid #10b981' : '1px solid var(--border-color)',
-                      background: selectedGateway === 'MANUAL' ? 'rgba(16, 185, 129, 0.08)' : 'var(--bg-card)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '6px',
-                      textAlign: 'center'
-                    }}
-                  >
-                    <input 
-                      type="radio" 
-                      name="gateway" 
-                      checked={selectedGateway === 'MANUAL'} 
-                      onChange={() => setSelectedGateway('MANUAL')} 
-                    />
-                    <strong style={{ fontSize: '13px', color: '#10b981' }}>Transferencia</strong>
-                    <span style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>BCP, BBVA, Yape/Plin</span>
-                  </label>
+                <div style={{ marginBottom: '14px' }}>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: '14.5px', color: 'var(--text-primary)', fontWeight: 600 }}>
+                    Selecciona tu Método de Pago:
+                  </h4>
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                    Elige la pasarela con la que deseas abonar tu suscripción comercial.
+                  </span>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                {getActiveGatewaysList().length === 0 ? (
+                  <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '10px', padding: '18px', marginBottom: '20px', textAlign: 'center' }}>
+                    <IconAlertTriangle size={26} style={{ color: '#ef4444', margin: '0 auto 8px auto', display: 'block' }} />
+                    <strong style={{ fontSize: '14px', color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
+                      No hay pasarelas de pago habilitadas
+                    </strong>
+                    <p style={{ margin: 0, fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                      El administrador aún no ha activado pasarelas de cobro para esta plataforma. Por favor comunícate con soporte para habilitar tu suscripción.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '22px' }}>
+                    {getActiveGatewaysList().map(gw => {
+                      const isSelected = selectedGateway === gw.id;
+                      return (
+                        <div
+                          key={gw.id}
+                          onClick={() => setSelectedGateway(gw.id)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '12px 16px',
+                            borderRadius: '12px',
+                            border: isSelected ? `2px solid ${gw.color}` : '1px solid var(--border-color)',
+                            background: isSelected ? `${gw.color}10` : 'var(--bg-card)',
+                            cursor: 'pointer',
+                            transition: 'all 0.18s ease',
+                            boxShadow: isSelected ? `0 2px 10px ${gw.color}20` : 'none'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{
+                              width: '38px',
+                              height: '38px',
+                              borderRadius: '10px',
+                              background: `${gw.color}18`,
+                              color: gw.color,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '18px',
+                              fontWeight: 700,
+                              flexShrink: 0
+                            }}>
+                              {gw.icon}
+                            </div>
+                            <div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <strong style={{ fontSize: '13.5px', color: 'var(--text-primary)' }}>{gw.name}</strong>
+                                {gw.badge && (
+                                  <span style={{ fontSize: '10px', background: `${gw.color}22`, color: gw.color, padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                                    {gw.badge}
+                                  </span>
+                                )}
+                              </div>
+                              <span style={{ fontSize: '11.5px', color: 'var(--text-secondary)' }}>{gw.subtitle}</span>
+                            </div>
+                          </div>
+
+                          <div style={{
+                            width: '18px',
+                            height: '18px',
+                            borderRadius: '50%',
+                            border: `2px solid ${isSelected ? gw.color : 'var(--border-color)'}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: isSelected ? gw.color : 'transparent',
+                            flexShrink: 0
+                          }}>
+                            {isSelected && <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#fff' }} />}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
                   <button 
                     type="button" 
                     className="btn btn-secondary"
@@ -501,8 +524,9 @@ export default function TenantPlanModal({ isOpen, onClose, API_URL, authToken, c
                   <button 
                     type="button" 
                     className="btn btn-primary"
-                    disabled={processingCheckout}
+                    disabled={processingCheckout || getActiveGatewaysList().length === 0}
                     onClick={handleExecutePayment}
+                    style={{ padding: '10px 20px', fontWeight: 600 }}
                   >
                     {processingCheckout ? (
                       <>
@@ -519,87 +543,70 @@ export default function TenantPlanModal({ isOpen, onClose, API_URL, authToken, c
                 </div>
               </>
             ) : checkoutResult.gateway === 'MERCADOPAGO' ? (
-              /* Mercado Pago Checkout Pro Panel */
-              <div className="glass-card" style={{ padding: '24px', borderRadius: '12px', border: '1px solid rgba(0, 158, 227, 0.35)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#009ee3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '18px', boxShadow: '0 2px 8px rgba(0, 158, 227, 0.4)' }}>
+              /* Mercado Pago Checkout Pro Panel - Clean & Minimalist */
+              <div className="glass-card animate-fade-in" style={{ padding: '22px', borderRadius: '12px', border: '1px solid rgba(0, 158, 227, 0.35)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'linear-gradient(135deg, #009ee3 0%, #0081bb 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '15px' }}>
                       MP
                     </div>
                     <div>
-                      <h4 style={{ margin: 0, fontSize: '17px', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span>Mercado Pago Checkout Pro</span>
+                      <h4 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>
+                        Mercado Pago Checkout Pro
                       </h4>
-                      <span style={{ fontSize: '12.5px', color: '#009ee3', fontWeight: 500 }}>
+                      <span style={{ fontSize: '12px', color: '#009ee3', fontWeight: 500 }}>
                         Orden #{checkoutResult.orderId.substring(0, 8)} • Plan {checkoutResult.planName}
                       </span>
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Total a abonar</div>
-                    <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Monto a pagar</div>
+                    <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>
                       {checkoutResult.currency} {Number(checkoutResult.amount).toFixed(2)}
                     </div>
                   </div>
                 </div>
 
                 {checkoutResult.isSandbox && (
-                  <div style={{ background: 'rgba(245, 158, 11, 0.12)', border: '1px solid #f59e0b', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', fontSize: '12px', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <IconAlertTriangle size={16} />
-                    <span><strong>Modo Sandbox (Pruebas) Activo:</strong> Puedes usar tarjetas de prueba de Mercado Pago para simular el pago.</span>
+                  <div style={{ background: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '8px', padding: '8px 12px', marginBottom: '14px', fontSize: '11.5px', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <IconAlertTriangle size={14} />
+                    <span>Modo Sandbox (Pruebas con tarjetas de test activo).</span>
                   </div>
                 )}
 
-                <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: '10px', marginBottom: '20px', border: '1px solid var(--border-color)' }}>
-                  <div style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '10px' }}>
-                    💳 Métodos de Pago Disponibles en Checkout Pro:
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-primary)', background: 'var(--bg-card-subtle)', padding: '6px 10px', borderRadius: '6px' }}>
-                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#730d88', display: 'inline-block' }}></span>
-                      <span><strong>Yape</strong> (QR o Clave)</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-primary)', background: 'var(--bg-card-subtle)', padding: '6px 10px', borderRadius: '6px' }}>
-                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#009ee3', display: 'inline-block' }}></span>
-                      <span><strong>Tarjetas</strong> Visa/Master</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-primary)', background: 'var(--bg-card-subtle)', padding: '6px 10px', borderRadius: '6px' }}>
-                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#10b981', display: 'inline-block' }}></span>
-                      <span><strong>Saldo</strong> Mercado Pago</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: 'var(--text-primary)', background: 'var(--bg-card-subtle)', padding: '6px 10px', borderRadius: '6px' }}>
-                      <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block' }}></span>
-                      <span><strong>PagoEfectivo</strong></span>
-                    </div>
-                  </div>
+                {/* Accepted Payment badges */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '18px' }}>
+                  <span style={{ fontSize: '11px', background: 'rgba(115, 13, 136, 0.12)', color: '#730d88', padding: '3px 8px', borderRadius: '6px', fontWeight: 600 }}>🟣 Yape (QR / Clave)</span>
+                  <span style={{ fontSize: '11px', background: 'rgba(0, 158, 227, 0.12)', color: '#009ee3', padding: '3px 8px', borderRadius: '6px', fontWeight: 600 }}>💳 Tarjetas Visa / Master</span>
+                  <span style={{ fontSize: '11px', background: 'rgba(16, 185, 129, 0.12)', color: '#10b981', padding: '3px 8px', borderRadius: '6px', fontWeight: 600 }}>🟢 Saldo Mercado Pago</span>
+                  <span style={{ fontSize: '11px', background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', padding: '3px 8px', borderRadius: '6px', fontWeight: 600 }}>🟠 PagoEfectivo</span>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '18px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '16px' }}>
                   <a 
                     href={checkoutResult.checkoutUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="btn btn-primary"
+                    className="btn btn-primary btn-lg"
                     style={{
-                      background: '#009ee3',
+                      background: 'linear-gradient(135deg, #009ee3 0%, #0081bb 100%)',
                       borderColor: '#009ee3',
                       color: '#ffffff',
                       textAlign: 'center',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      gap: '10px',
-                      padding: '14px 20px',
-                      fontSize: '15.5px',
+                      gap: '8px',
+                      padding: '13px 20px',
+                      fontSize: '15px',
                       fontWeight: 700,
                       textDecoration: 'none',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 14px rgba(0, 158, 227, 0.4)',
-                      transition: 'transform 0.2s ease'
+                      borderRadius: '10px',
+                      boxShadow: '0 4px 14px rgba(0, 158, 227, 0.35)'
                     }}
                   >
-                    <span>Ir a Pagar con Mercado Pago / Yape</span>
-                    <IconExternalLink size={18} />
+                    <span>Ir a Pagar S/. {Number(checkoutResult.amount).toFixed(2)} en Mercado Pago</span>
+                    <IconExternalLink size={16} />
                   </a>
 
                   <button
@@ -607,16 +614,16 @@ export default function TenantPlanModal({ isOpen, onClose, API_URL, authToken, c
                     className="btn btn-secondary"
                     disabled={verifyingPay}
                     onClick={() => handleVerifyMercadoPago(checkoutResult.orderId)}
-                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '11px', borderRadius: '8px', fontWeight: 600 }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px', borderRadius: '8px', fontWeight: 600, fontSize: '13px' }}
                   >
                     {verifyingPay ? (
                       <>
-                        <LoaderCircleIcon className="animate-spin" size={16} />
-                        <span>Verificando acreditación en Mercado Pago...</span>
+                        <LoaderCircleIcon className="animate-spin" size={15} />
+                        <span>Verificando pago en Mercado Pago...</span>
                       </>
                     ) : (
                       <>
-                        <IconRefresh size={16} />
+                        <IconRefresh size={14} />
                         <span>Ya completé mi pago • Verificar Activación</span>
                       </>
                     )}
@@ -626,81 +633,94 @@ export default function TenantPlanModal({ isOpen, onClose, API_URL, authToken, c
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
                   <button 
                     type="button" 
-                    className="btn btn-secondary"
+                    className="btn btn-secondary btn-sm"
                     onClick={() => setCheckoutResult(null)}
-                    style={{ fontSize: '12.5px', padding: '6px 12px' }}
+                    style={{ fontSize: '12px', padding: '5px 10px' }}
                   >
-                    Volver a métodos de pago
+                    Elegir otro método
                   </button>
                   <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                    🔒 Transacción protegida por Mercado Pago y SSL
+                    🔒 Pago seguro cifrado 256-bit SSL
                   </span>
                 </div>
               </div>
             ) : (
-              /* Checkout Result / Manual or Other Gateway Action */
-              <div className="glass-card" style={{ padding: '20px', borderRadius: '10px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                  <IconShield size={20} style={{ color: '#10b981' }} />
-                  <h4 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>
-                    Orden de Suscripción #{checkoutResult.orderId.substring(0, 8)}
-                  </h4>
+              /* Manual / Bank Transfer Panel - Clean & Minimalist */
+              <div className="glass-card animate-fade-in" style={{ padding: '22px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', paddingBottom: '12px', borderBottom: '1px solid var(--border-color)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: 700 }}>
+                      🏦
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '16px', color: 'var(--text-primary)' }}>
+                        Transferencia Bancaria
+                      </h4>
+                      <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 500 }}>
+                        Orden #{checkoutResult.orderId.substring(0, 8)} • Plan {checkoutResult.planName}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>Total a abonar</div>
+                    <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                      {checkoutResult.currency} {Number(checkoutResult.amount).toFixed(2)}
+                    </div>
+                  </div>
                 </div>
 
-                <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '16px' }}>
-                  {checkoutResult.instructions}
-                </p>
-
-                {/* If Bank Transfer / MANUAL */}
                 {checkoutResult.bankTransferInfo && (
-                  <div style={{ background: 'var(--bg-card)', padding: '14px', borderRadius: '8px', border: '1px dashed var(--border-color)', marginBottom: '16px' }}>
-                    <strong style={{ fontSize: '12.5px', color: 'var(--text-primary)', display: 'block', marginBottom: '6px' }}>
+                  <div style={{ background: 'var(--bg-card-subtle)', padding: '12px 14px', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '16px' }}>
+                    <strong style={{ fontSize: '12px', color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
                       Cuentas Bancarias Oficiales:
                     </strong>
-                    <pre style={{ margin: 0, fontSize: '12px', whiteSpace: 'pre-wrap', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                    <pre style={{ margin: 0, fontSize: '11.5px', whiteSpace: 'pre-wrap', color: 'var(--text-secondary)', fontFamily: 'monospace', lineHeight: '1.4' }}>
                       {checkoutResult.bankTransferInfo}
                     </pre>
                   </div>
                 )}
 
-                {/* Manual Reference Form */}
-                <div style={{ marginBottom: '16px' }}>
-                  <label className="form-label">Número de Operación / Constancia de Pago</label>
-                  <input 
-                    type="text"
-                    className="input-field"
-                    placeholder="Ej. Operación Yape 88491 o BCP 01928374"
-                    value={manualRefCode}
-                    onChange={(e) => setManualRefCode(e.target.value)}
-                  />
-                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+                  <div>
+                    <label className="field-label" style={{ fontSize: '11.5px' }}>N° de Operación o Constancia</label>
+                    <input 
+                      type="text"
+                      className="input-field"
+                      placeholder="Ej. Yape 88491 o BCP 01928374"
+                      value={manualRefCode}
+                      onChange={(e) => setManualRefCode(e.target.value)}
+                    />
+                  </div>
 
-                <div style={{ marginBottom: '16px' }}>
-                  <label className="form-label">Notas Adicionales (Opcional)</label>
-                  <input 
-                    type="text"
-                    className="input-field"
-                    placeholder="Nombre del titular o banco emisor"
-                    value={manualNotes}
-                    onChange={(e) => setManualNotes(e.target.value)}
-                  />
+                  <div>
+                    <label className="field-label" style={{ fontSize: '11.5px' }}>Notas o Titular (Opcional)</label>
+                    <input 
+                      type="text"
+                      className="input-field"
+                      placeholder="Nombre del titular o banco"
+                      value={manualNotes}
+                      onChange={(e) => setManualNotes(e.target.value)}
+                    />
+                  </div>
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <button 
                     type="button" 
-                    className="btn btn-secondary"
+                    className="btn btn-secondary btn-sm"
                     onClick={() => setCheckoutResult(null)}
+                    style={{ fontSize: '12px', padding: '6px 12px' }}
                   >
-                    Volver a opciones
+                    Volver a métodos
                   </button>
                   <button 
                     type="button" 
                     className="btn btn-primary"
-                    disabled={reportingPay}
+                    disabled={reportingPay || !manualRefCode.trim()}
                     onClick={handleReportManualPayment}
+                    style={{ padding: '8px 16px', fontWeight: 600 }}
                   >
-                    {reportingPay ? 'Informando Pago...' : 'Confirmar & Notificar Pago'}
+                    {reportingPay ? 'Notificando Pago...' : 'Confirmar & Notificar Pago'}
                   </button>
                 </div>
               </div>

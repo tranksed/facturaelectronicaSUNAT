@@ -62,6 +62,7 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
     bankTransferInfo: ''
   });
   const [savingGateways, setSavingGateways] = useState(false);
+  const [activeGatewayTab, setActiveGatewayTab] = useState('mercadopago');
   const [copiedWebhook, setCopiedWebhook] = useState(false);
   const [paymentOrders, setPaymentOrders] = useState([]);
   const [approvingOrderId, setApprovingOrderId] = useState(null);
@@ -1356,256 +1357,402 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
       {/* TAB: PASARELAS DE PAGO & SUSCRIPCIONES */}
       {activeAdminSubTab === 'gateways' && (
         <div className="glass-card animate-fade-in" style={{ marginTop: '20px' }}>
-          <div style={{ marginBottom: '18px' }}>
-            <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <IconCreditCard size={20} />
-              <span>Configuración de Pasarelas de Pago Oficiales</span>
-            </h2>
-            <span className="field-hint">
-              Configura tus credenciales de cobro para Izipay, Mercado Pago, PayPal, Culqi y Transferencias Bancarias para recibir los pagos de tus clientes.
-            </span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
+            <div>
+              <h2 className="card-title" style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <IconCreditCard size={20} />
+                <span>Configuración de Pasarelas de Pago Oficiales</span>
+              </h2>
+              <span className="field-hint">
+                Activa y administra las pasarelas de pago disponibles para los clientes al contratar o renovar planes.
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Pasarelas activas para clientes:</span>
+              <strong style={{ color: 'var(--primary)', background: 'var(--bg-card-subtle)', padding: '3px 10px', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                {[
+                  gatewaysForm.mercadopagoActive,
+                  gatewaysForm.izipayActive,
+                  gatewaysForm.paypalActive,
+                  gatewaysForm.culqiActive,
+                  gatewaysForm.bankTransferActive
+                ].filter(Boolean).length} de 5
+              </strong>
+            </div>
+          </div>
+
+          {/* Clean Gateway Selector Tabs Bar */}
+          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)' }}>
+            {[
+              { id: 'mercadopago', name: 'Mercado Pago', icon: '⚡', color: '#009ee3', active: gatewaysForm.mercadopagoActive },
+              { id: 'izipay', name: 'Izipay', icon: '💳', color: '#ff0055', active: gatewaysForm.izipayActive },
+              { id: 'paypal', name: 'PayPal', icon: '🅿️', color: '#003087', active: gatewaysForm.paypalActive },
+              { id: 'culqi', name: 'Culqi', icon: '📱', color: '#00c389', active: gatewaysForm.culqiActive },
+              { id: 'bankTransfer', name: 'Transferencia Manual', icon: '🏦', color: '#10b981', active: gatewaysForm.bankTransferActive }
+            ].map(gw => (
+              <button
+                key={gw.id}
+                type="button"
+                onClick={() => setActiveGatewayTab(gw.id)}
+                style={{
+                  padding: '9px 15px',
+                  borderRadius: '10px',
+                  border: activeGatewayTab === gw.id ? `2px solid ${gw.color}` : '1px solid var(--border-color)',
+                  background: activeGatewayTab === gw.id ? `${gw.color}14` : 'var(--bg-card)',
+                  color: activeGatewayTab === gw.id ? gw.color : 'var(--text-secondary)',
+                  fontWeight: activeGatewayTab === gw.id ? 700 : 500,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  whiteSpace: 'nowrap',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <span>{gw.icon}</span>
+                <span style={{ fontSize: '13px' }}>{gw.name}</span>
+                <span style={{
+                  fontSize: '10px',
+                  padding: '2px 7px',
+                  borderRadius: '10px',
+                  background: gw.active ? 'rgba(16, 185, 129, 0.15)' : 'rgba(150, 150, 150, 0.15)',
+                  color: gw.active ? '#10b981' : 'var(--text-muted)',
+                  fontWeight: 700
+                }}>
+                  {gw.active ? 'Activo' : 'Inactivo'}
+                </span>
+              </button>
+            ))}
           </div>
 
           <form onSubmit={handleSaveGateways}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px', marginBottom: '22px' }}>
-              {/* 1. Mercado Pago */}
-              <div className="glass-card" style={{ padding: '16px', borderRadius: '10px', borderTop: '3px solid #009ee3' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <strong style={{ fontSize: '15px', color: '#009ee3' }}>Mercado Pago</strong>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+            {/* 1. Mercado Pago Tab */}
+            {activeGatewayTab === 'mercadopago' && (
+              <div className="glass-card animate-fade-in" style={{ padding: '22px', borderRadius: '12px', border: '1px solid rgba(0, 158, 227, 0.3)', marginBottom: '22px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '17px', color: '#009ee3', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>⚡ Mercado Pago (Checkout Pro & Yape)</span>
+                    </h3>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                      Recepción automática de pagos con Yape, Tarjetas de Débito/Crédito y saldo Mercado Pago con Webhooks IPN.
+                    </p>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: gatewaysForm.mercadopagoActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.08)', padding: '6px 14px', borderRadius: '20px', border: `1px solid ${gatewaysForm.mercadopagoActive ? '#10b981' : '#ef4444'}` }}>
                     <input 
-                      type="checkbox"
-                      checked={gatewaysForm.mercadopagoActive}
-                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, mercadopagoActive: e.target.checked })}
+                      type="checkbox" 
+                      checked={gatewaysForm.mercadopagoActive} 
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, mercadopagoActive: e.target.checked })} 
                     />
-                    <span>{gatewaysForm.mercadopagoActive ? 'Habilitado' : 'Deshabilitado'}</span>
+                    <strong style={{ fontSize: '12.5px', color: gatewaysForm.mercadopagoActive ? '#10b981' : '#ef4444' }}>
+                      {gatewaysForm.mercadopagoActive ? 'Pasarela Habilitada' : 'Pasarela Deshabilitada'}
+                    </strong>
                   </label>
                 </div>
 
-                <div className="form-group-field" style={{ marginBottom: '10px' }}>
-                  <label className="field-label" style={{ fontSize: '11.5px' }}>Public Key (Clave Pública)</label>
-                  <input 
-                    type="text" 
-                    className="input-field" 
-                    placeholder="TEST-xxxx o APP_USR-xxxx" 
-                    value={gatewaysForm.mercadopagoPublicKey || ''} 
-                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, mercadopagoPublicKey: e.target.value })} 
-                  />
+                {!gatewaysForm.mercadopagoActive && (
+                  <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '12.5px' }}>
+                    ℹ️ <strong>Pasarela Desactivada:</strong> Los clientes no verán la opción de Mercado Pago en su panel hasta que la habilites aquí.
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                  <div className="form-group-field">
+                    <label className="field-label" style={{ fontSize: '12px' }}>Public Key (Clave Pública)</label>
+                    <input 
+                      type="text" 
+                      className="input-field" 
+                      placeholder="TEST-xxxx o APP_USR-xxxx" 
+                      value={gatewaysForm.mercadopagoPublicKey || ''} 
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, mercadopagoPublicKey: e.target.value })} 
+                    />
+                  </div>
+
+                  <div className="form-group-field">
+                    <label className="field-label" style={{ fontSize: '12px' }}>Access Token (Clave Secreta)</label>
+                    <input 
+                      type="password" 
+                      className="input-field" 
+                      placeholder="TEST-xxxx o APP_USR-xxxx" 
+                      value={gatewaysForm.mercadopagoAccessToken || ''} 
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, mercadopagoAccessToken: e.target.value })} 
+                    />
+                  </div>
                 </div>
 
-                <div className="form-group-field" style={{ marginBottom: '10px' }}>
-                  <label className="field-label" style={{ fontSize: '11.5px' }}>Access Token (Clave Privada)</label>
-                  <input 
-                    type="password" 
-                    className="input-field" 
-                    placeholder="TEST-xxxx o APP_USR-xxxx" 
-                    value={gatewaysForm.mercadopagoAccessToken || ''} 
-                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, mercadopagoAccessToken: e.target.value })} 
-                  />
-                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', background: 'var(--bg-card-subtle)', padding: '12px 16px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                    <input 
+                      type="checkbox" 
+                      checked={gatewaysForm.mercadopagoSandbox} 
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, mercadopagoSandbox: e.target.checked })} 
+                    />
+                    <span>Modo Sandbox (Pruebas con tarjetas de test)</span>
+                  </label>
 
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer', marginBottom: '12px' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={gatewaysForm.mercadopagoSandbox} 
-                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, mercadopagoSandbox: e.target.checked })} 
-                  />
-                  <span>Modo Sandbox (Pruebas)</span>
-                </label>
-
-                {/* Webhook / IPN Notification URL */}
-                <div style={{ padding: '10px 12px', background: 'var(--bg-card-subtle)', borderRadius: '8px', border: '1px solid var(--border-color)', fontSize: '11px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <span style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>Webhook IPN (Notificaciones):</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>URL Webhook IPN:</span>
                     <button 
-                      type="button"
+                      type="button" 
                       onClick={() => {
                         const url = `${window.location.origin}/api/subscription/webhook/mercadopago`;
                         navigator.clipboard.writeText(url);
                         setCopiedWebhook(true);
                         setTimeout(() => setCopiedWebhook(false), 2000);
                       }}
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', color: copiedWebhook ? 'var(--success)' : '#009ee3', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 600 }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ fontSize: '11px', padding: '4px 8px', display: 'flex', alignItems: 'center', gap: '4px' }}
                     >
                       <IconCopy size={12} />
                       <span>{copiedWebhook ? '¡Copiado!' : 'Copiar URL'}</span>
                     </button>
                   </div>
-                  <code style={{ fontSize: '10.5px', color: '#009ee3', wordBreak: 'break-all', display: 'block', background: 'var(--bg-card)', padding: '5px 8px', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                    {`${window.location.origin}/api/subscription/webhook/mercadopago`}
-                  </code>
-                  <span style={{ display: 'block', marginTop: '6px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
-                    Pega esta URL en tu Panel de Mercado Pago Developers &gt; Webhooks para activar pagos aprobados automáticamente.
-                  </span>
                 </div>
               </div>
+            )}
 
-              {/* 2. Izipay */}
-              <div className="glass-card" style={{ padding: '16px', borderRadius: '10px', borderTop: '3px solid #ff0055' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <strong style={{ fontSize: '15px', color: '#ff0055' }}>Izipay</strong>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+            {/* 2. Izipay Tab */}
+            {activeGatewayTab === 'izipay' && (
+              <div className="glass-card animate-fade-in" style={{ padding: '22px', borderRadius: '12px', border: '1px solid rgba(255, 0, 85, 0.3)', marginBottom: '22px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '17px', color: '#ff0055', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>💳 Izipay Token (Visa & Mastercard Perú)</span>
+                    </h3>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                      Pasarela peruana directa para procesamiento con tarjeta de crédito y débito.
+                    </p>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: gatewaysForm.izipayActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.08)', padding: '6px 14px', borderRadius: '20px', border: `1px solid ${gatewaysForm.izipayActive ? '#10b981' : '#ef4444'}` }}>
                     <input 
-                      type="checkbox"
-                      checked={gatewaysForm.izipayActive}
-                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, izipayActive: e.target.checked })}
+                      type="checkbox" 
+                      checked={gatewaysForm.izipayActive} 
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, izipayActive: e.target.checked })} 
                     />
-                    <span>{gatewaysForm.izipayActive ? 'Habilitado' : 'Deshabilitado'}</span>
+                    <strong style={{ fontSize: '12.5px', color: gatewaysForm.izipayActive ? '#10b981' : '#ef4444' }}>
+                      {gatewaysForm.izipayActive ? 'Pasarela Habilitada' : 'Pasarela Deshabilitada'}
+                    </strong>
                   </label>
                 </div>
 
-                <div className="form-group-field" style={{ marginBottom: '10px' }}>
-                  <label className="field-label" style={{ fontSize: '11.5px' }}>Public Key (Clave Pública)</label>
-                  <input 
-                    type="text" 
-                    className="input-field" 
-                    placeholder="Ej. 12345678:testpublickey_xxxx" 
-                    value={gatewaysForm.izipayPublicKey || ''} 
-                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, izipayPublicKey: e.target.value })} 
-                  />
+                {!gatewaysForm.izipayActive && (
+                  <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '12.5px' }}>
+                    ℹ️ <strong>Pasarela Desactivada:</strong> No será visible para los clientes mientras esté deshabilitada.
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                  <div className="form-group-field">
+                    <label className="field-label" style={{ fontSize: '12px' }}>Public Key (Clave Pública)</label>
+                    <input 
+                      type="text" 
+                      className="input-field" 
+                      placeholder="Ej. 12345678:testpublickey_xxxx" 
+                      value={gatewaysForm.izipayPublicKey || ''} 
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, izipayPublicKey: e.target.value })} 
+                    />
+                  </div>
+
+                  <div className="form-group-field">
+                    <label className="field-label" style={{ fontSize: '12px' }}>Clave HMAC-SHA256</label>
+                    <input 
+                      type="password" 
+                      className="input-field" 
+                      placeholder="Firma secreta provista por Izipay" 
+                      value={gatewaysForm.izipayShaKey || ''} 
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, izipayShaKey: e.target.value })} 
+                    />
+                  </div>
                 </div>
 
-                <div className="form-group-field" style={{ marginBottom: '10px' }}>
-                  <label className="field-label" style={{ fontSize: '11.5px' }}>Clave HMAC-SHA256</label>
-                  <input 
-                    type="password" 
-                    className="input-field" 
-                    placeholder="Clave de firma para validación" 
-                    value={gatewaysForm.izipayShaKey || ''} 
-                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, izipayShaKey: e.target.value })} 
-                  />
-                </div>
-
-                <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
                   <input 
                     type="checkbox" 
                     checked={gatewaysForm.izipaySandbox} 
                     onChange={(e) => setGatewaysForm({ ...gatewaysForm, izipaySandbox: e.target.checked })} 
                   />
-                  <span>Modo Sandbox (Pruebas)</span>
+                  <span>Modo Sandbox (Pruebas Izipay)</span>
                 </label>
               </div>
+            )}
 
-              {/* 3. PayPal */}
-              <div className="glass-card" style={{ padding: '16px', borderRadius: '10px', borderTop: '3px solid #003087' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <strong style={{ fontSize: '15px', color: '#003087' }}>PayPal</strong>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+            {/* 3. PayPal Tab */}
+            {activeGatewayTab === 'paypal' && (
+              <div className="glass-card animate-fade-in" style={{ padding: '22px', borderRadius: '12px', border: '1px solid rgba(0, 48, 135, 0.3)', marginBottom: '22px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '17px', color: '#003087', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>🅿️ PayPal Checkout (Cobros Internacionales)</span>
+                    </h3>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                      Ideal para clientes internacionales o pagos en dólares (USD).
+                    </p>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: gatewaysForm.paypalActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.08)', padding: '6px 14px', borderRadius: '20px', border: `1px solid ${gatewaysForm.paypalActive ? '#10b981' : '#ef4444'}` }}>
                     <input 
-                      type="checkbox"
-                      checked={gatewaysForm.paypalActive}
-                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, paypalActive: e.target.checked })}
+                      type="checkbox" 
+                      checked={gatewaysForm.paypalActive} 
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, paypalActive: e.target.checked })} 
                     />
-                    <span>{gatewaysForm.paypalActive ? 'Habilitado' : 'Deshabilitado'}</span>
+                    <strong style={{ fontSize: '12.5px', color: gatewaysForm.paypalActive ? '#10b981' : '#ef4444' }}>
+                      {gatewaysForm.paypalActive ? 'Pasarela Habilitada' : 'Pasarela Deshabilitada'}
+                    </strong>
                   </label>
                 </div>
 
-                <div className="form-group-field" style={{ marginBottom: '10px' }}>
-                  <label className="field-label" style={{ fontSize: '11.5px' }}>Client ID</label>
-                  <input 
-                    type="text" 
-                    className="input-field" 
-                    placeholder="AZ_xxxx" 
-                    value={gatewaysForm.paypalClientId || ''} 
-                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, paypalClientId: e.target.value })} 
-                  />
+                {!gatewaysForm.paypalActive && (
+                  <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '12.5px' }}>
+                    ℹ️ <strong>Pasarela Desactivada:</strong> Oculta para los clientes en su modal de compra.
+                  </div>
+                )}
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '16px' }}>
+                  <div className="form-group-field">
+                    <label className="field-label" style={{ fontSize: '12px' }}>Client ID</label>
+                    <input 
+                      type="text" 
+                      className="input-field" 
+                      placeholder="AZ_xxxx" 
+                      value={gatewaysForm.paypalClientId || ''} 
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, paypalClientId: e.target.value })} 
+                    />
+                  </div>
+
+                  <div className="form-group-field">
+                    <label className="field-label" style={{ fontSize: '12px' }}>Secret Key</label>
+                    <input 
+                      type="password" 
+                      className="input-field" 
+                      placeholder="E_xxxx" 
+                      value={gatewaysForm.paypalSecret || ''} 
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, paypalSecret: e.target.value })} 
+                    />
+                  </div>
                 </div>
 
-                <div className="form-group-field" style={{ marginBottom: '10px' }}>
-                  <label className="field-label" style={{ fontSize: '11.5px' }}>Secret Key</label>
-                  <input 
-                    type="password" 
-                    className="input-field" 
-                    placeholder="E_xxxx" 
-                    value={gatewaysForm.paypalSecret || ''} 
-                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, paypalSecret: e.target.value })} 
-                  />
-                </div>
-
-                <div className="form-group-field">
-                  <label className="field-label" style={{ fontSize: '11.5px' }}>Modo de Entorno</label>
+                <div className="form-group-field" style={{ maxWidth: '280px' }}>
+                  <label className="field-label" style={{ fontSize: '12px' }}>Entorno</label>
                   <select 
                     className="input-field"
                     value={gatewaysForm.paypalMode || 'sandbox'}
                     onChange={(e) => setGatewaysForm({ ...gatewaysForm, paypalMode: e.target.value })}
                   >
                     <option value="sandbox">Sandbox (Pruebas)</option>
-                    <option value="live">Live (Producción Real)</option>
+                    <option value="live">Live (Producción)</option>
                   </select>
                 </div>
               </div>
+            )}
 
-              {/* 4. Culqi */}
-              <div className="glass-card" style={{ padding: '16px', borderRadius: '10px', borderTop: '3px solid #00c389' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <strong style={{ fontSize: '15px', color: '#00c389' }}>Culqi</strong>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+            {/* 4. Culqi Tab */}
+            {activeGatewayTab === 'culqi' && (
+              <div className="glass-card animate-fade-in" style={{ padding: '22px', borderRadius: '12px', border: '1px solid rgba(0, 195, 137, 0.3)', marginBottom: '22px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '17px', color: '#00c389', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>📱 Culqi (Tarjetas & Billeteras Perú)</span>
+                    </h3>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                      Soporte para cobro online con tarjetas de débito/crédito y PagoEfectivo.
+                    </p>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: gatewaysForm.culqiActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.08)', padding: '6px 14px', borderRadius: '20px', border: `1px solid ${gatewaysForm.culqiActive ? '#10b981' : '#ef4444'}` }}>
                     <input 
-                      type="checkbox"
-                      checked={gatewaysForm.culqiActive}
-                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, culqiActive: e.target.checked })}
+                      type="checkbox" 
+                      checked={gatewaysForm.culqiActive} 
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, culqiActive: e.target.checked })} 
                     />
-                    <span>{gatewaysForm.culqiActive ? 'Habilitado' : 'Deshabilitado'}</span>
+                    <strong style={{ fontSize: '12.5px', color: gatewaysForm.culqiActive ? '#10b981' : '#ef4444' }}>
+                      {gatewaysForm.culqiActive ? 'Pasarela Habilitada' : 'Pasarela Deshabilitada'}
+                    </strong>
                   </label>
                 </div>
 
-                <div className="form-group-field" style={{ marginBottom: '10px' }}>
-                  <label className="field-label" style={{ fontSize: '11.5px' }}>Public Key (pk_test_... o pk_live_...)</label>
-                  <input 
-                    type="text" 
-                    className="input-field" 
-                    placeholder="pk_test_xxxx" 
-                    value={gatewaysForm.culqiPublicKey || ''} 
-                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, culqiPublicKey: e.target.value })} 
-                  />
-                </div>
+                {!gatewaysForm.culqiActive && (
+                  <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '12.5px' }}>
+                    ℹ️ <strong>Pasarela Desactivada:</strong> No aparecerá en el selector de medios de pago.
+                  </div>
+                )}
 
-                <div className="form-group-field">
-                  <label className="field-label" style={{ fontSize: '11.5px' }}>Secret Key (sk_test_... o sk_live_...)</label>
-                  <input 
-                    type="password" 
-                    className="input-field" 
-                    placeholder="sk_test_xxxx" 
-                    value={gatewaysForm.culqiSecretKey || ''} 
-                    onChange={(e) => setGatewaysForm({ ...gatewaysForm, culqiSecretKey: e.target.value })} 
-                  />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                  <div className="form-group-field">
+                    <label className="field-label" style={{ fontSize: '12px' }}>Public Key (pk_test_... o pk_live_...)</label>
+                    <input 
+                      type="text" 
+                      className="input-field" 
+                      placeholder="pk_live_xxxx" 
+                      value={gatewaysForm.culqiPublicKey || ''} 
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, culqiPublicKey: e.target.value })} 
+                    />
+                  </div>
+
+                  <div className="form-group-field">
+                    <label className="field-label" style={{ fontSize: '12px' }}>Secret Key (sk_test_... o sk_live_...)</label>
+                    <input 
+                      type="password" 
+                      className="input-field" 
+                      placeholder="sk_live_xxxx" 
+                      value={gatewaysForm.culqiSecretKey || ''} 
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, culqiSecretKey: e.target.value })} 
+                    />
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* 5. Transferencia Bancaria Manual */}
-              <div className="glass-card" style={{ padding: '16px', borderRadius: '10px', borderTop: '3px solid #10b981', gridColumn: 'span 2' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <strong style={{ fontSize: '15px', color: '#10b981' }}>Transferencia Bancaria Manual & Yape / Plin</strong>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+            {/* 5. Transferencia Bancaria Manual Tab */}
+            {activeGatewayTab === 'bankTransfer' && (
+              <div className="glass-card animate-fade-in" style={{ padding: '22px', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.3)', marginBottom: '22px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', paddingBottom: '14px', borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '10px' }}>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '17px', color: '#10b981', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span>🏦 Transferencia Bancaria Manual & Yape / Plin</span>
+                    </h3>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                      Los clientes depositan a tus cuentas bancarias y reportan su número de operación para aprobación manual.
+                    </p>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: gatewaysForm.bankTransferActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.08)', padding: '6px 14px', borderRadius: '20px', border: `1px solid ${gatewaysForm.bankTransferActive ? '#10b981' : '#ef4444'}` }}>
                     <input 
-                      type="checkbox"
-                      checked={gatewaysForm.bankTransferActive}
-                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, bankTransferActive: e.target.checked })}
+                      type="checkbox" 
+                      checked={gatewaysForm.bankTransferActive} 
+                      onChange={(e) => setGatewaysForm({ ...gatewaysForm, bankTransferActive: e.target.checked })} 
                     />
-                    <span>{gatewaysForm.bankTransferActive ? 'Habilitado' : 'Deshabilitado'}</span>
+                    <strong style={{ fontSize: '12.5px', color: gatewaysForm.bankTransferActive ? '#10b981' : '#ef4444' }}>
+                      {gatewaysForm.bankTransferActive ? 'Opción Habilitada' : 'Opción Deshabilitada'}
+                    </strong>
                   </label>
                 </div>
 
+                {!gatewaysForm.bankTransferActive && (
+                  <div style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '8px', padding: '10px 14px', marginBottom: '16px', color: 'var(--text-secondary)', fontSize: '12.5px' }}>
+                    ℹ️ <strong>Opción Desactivada:</strong> Los clientes no podrán elegir pago manual por transferencia bancaria.
+                  </div>
+                )}
+
                 <div className="form-group-field">
-                  <label className="field-label" style={{ fontSize: '11.5px' }}>Cuentas Bancarias e Instrucciones de Pago</label>
+                  <label className="field-label" style={{ fontSize: '12px' }}>Cuentas Bancarias e Instrucciones de Abono</label>
                   <textarea 
                     className="input-field" 
                     rows={4}
                     value={gatewaysForm.bankTransferInfo || ''} 
                     onChange={(e) => setGatewaysForm({ ...gatewaysForm, bankTransferInfo: e.target.value })} 
-                    placeholder="BCP Soles: 191-xxxx CCI: 002-xxxx&#10;BBVA Soles: 0011-xxxx&#10;Yape / Plin: 999 888 777"
+                    placeholder="BCP Soles: 191-xxxx CCI: 002-xxxx&#10;BBVA Soles: 0011-xxxx&#10;Yape / Plin: 999 888 777 a nombre de Mi Empresa S.A.C."
                   />
+                  <span className="field-hint">Esta información se mostrará al cliente que elija transferencia bancaria.</span>
                 </div>
               </div>
-            </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '28px' }}>
               <button 
                 type="submit" 
-                className="btn btn-primary"
+                className="btn btn-primary btn-lg"
                 disabled={savingGateways}
+                style={{ padding: '12px 24px', fontWeight: 700 }}
               >
-                {savingGateways ? 'Guardando Pasarelas...' : 'Guardar Configuración de Pasarelas'}
+                <IconCheck size={16} />
+                <span>{savingGateways ? 'Guardando Cambios...' : 'Guardar Configuración de Pasarelas'}</span>
               </button>
             </div>
           </form>

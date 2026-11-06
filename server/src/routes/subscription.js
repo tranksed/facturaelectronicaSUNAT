@@ -176,11 +176,11 @@ router.get('/my-plan', async (req, res) => {
       userLimit,
       isUserLimitReached: currentUsersCount >= userLimit,
       availableGateways: {
-        izipay: platform?.izipayActive && !!platform?.izipayPublicKey,
-        mercadopago: platform?.mercadopagoActive && (!!platform?.mercadopagoPublicKey || !!platform?.mercadopagoAccessToken),
-        paypal: platform?.paypalActive && !!platform?.paypalClientId,
-        culqi: platform?.culqiActive && !!platform?.culqiPublicKey,
-        bankTransfer: platform?.bankTransferActive ?? true
+        mercadopago: Boolean(platform?.mercadopagoActive && platform?.mercadopagoAccessToken),
+        izipay: Boolean(platform?.izipayActive && platform?.izipayPublicKey),
+        paypal: Boolean(platform?.paypalActive && platform?.paypalClientId),
+        culqi: Boolean(platform?.culqiActive && platform?.culqiPublicKey),
+        bankTransfer: Boolean(platform ? platform.bankTransferActive !== false : true)
       },
       bankTransferInfo: platform?.bankTransferInfo || ''
     });
@@ -229,12 +229,30 @@ router.post('/checkout', async (req, res) => {
       });
     }
 
+    // Verify chosen gateway is enabled on platform
+    const gw = (gateway || 'MANUAL').toUpperCase();
+    if (gw === 'MERCADOPAGO' && (!platform?.mercadopagoActive || !platform?.mercadopagoAccessToken)) {
+      return res.status(400).json({ error: 'La pasarela Mercado Pago no está habilitada o le falta configuración de Access Token.' });
+    }
+    if (gw === 'IZIPAY' && (!platform?.izipayActive || !platform?.izipayPublicKey)) {
+      return res.status(400).json({ error: 'La pasarela Izipay no está habilitada en la plataforma.' });
+    }
+    if (gw === 'PAYPAL' && (!platform?.paypalActive || !platform?.paypalClientId)) {
+      return res.status(400).json({ error: 'La pasarela PayPal no está habilitada en la plataforma.' });
+    }
+    if (gw === 'CULQI' && (!platform?.culqiActive || !platform?.culqiPublicKey)) {
+      return res.status(400).json({ error: 'La pasarela Culqi no está habilitada en la plataforma.' });
+    }
+    if (gw === 'MANUAL' && platform && platform.bankTransferActive === false) {
+      return res.status(400).json({ error: 'La opción de transferencia bancaria ha sido deshabilitada por el administrador.' });
+    }
+
     // Create PaymentOrder record
     const order = await prisma.paymentOrder.create({
       data: {
         userId: effectiveUserId,
         planId: plan.id,
-        gateway: gateway.toUpperCase(),
+        gateway: gw,
         amount: plan.price,
         currency: plan.currency || 'PEN',
         status: 'PENDING',
