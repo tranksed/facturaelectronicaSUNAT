@@ -3,6 +3,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/SUNAT-UBL%202.1%20Oficial-blue?style=for-the-badge&logo=peru" alt="SUNAT UBL 2.1" />
   <img src="https://img.shields.io/badge/API-REST%20Multiempresa-8A2BE2?style=for-the-badge" alt="REST API" />
+  <img src="https://img.shields.io/badge/Telegram%20Bot-Telegraf-2CA5E0?style=for-the-badge&logo=telegram" alt="Telegram Bot" />
   <img src="https://img.shields.io/badge/Node.js-20%20LTS-green?style=for-the-badge&logo=node.js" alt="Node.js" />
   <img src="https://img.shields.io/badge/React-18%20%2B%20Vite-61DAFB?style=for-the-badge&logo=react" alt="React" />
   <img src="https://img.shields.io/badge/Prisma-ORM-2D3748?style=for-the-badge&logo=prisma" alt="Prisma" />
@@ -11,7 +12,7 @@
   <img src="https://img.shields.io/badge/License-MIT-purple?style=for-the-badge" alt="MIT License" />
 </p>
 
-Plataforma SaaS completa, moderna y robusta de **Facturación Electrónica para Perú (SUNAT)** con arquitectura **Multitenant**, soporte de **Marca Blanca**, **API Proveedor Multiempresa** para conectar sistemas externos (**POS, Odoo, Apps móviles, CRM, SaaS y WHMCS**), pasarelas de pago (**Mercado Pago, Izipay, Culqi, PayPal**), visor de impresión **A4 y Ticket (80mm)**, y conexión directa con los Web Services oficiales de SUNAT (**sin PSE/OSE intermediarios ni cobros por comprobante**).
+Plataforma SaaS completa, moderna y robusta de **Facturación Electrónica para Perú (SUNAT)** con arquitectura **Multitenant**, soporte de **Marca Blanca**, **API Proveedor Multiempresa** para conectar sistemas externos (**POS, Odoo, Apps móviles, CRM, SaaS y WHMCS**), asistente conversacional oficial con **Bot de Telegram**, pasarelas de pago (**Mercado Pago, Izipay, Culqi, PayPal**), visor de impresión **A4 y Ticket (80mm)**, y conexión directa con los Web Services oficiales de SUNAT (**sin PSE/OSE intermediarios ni cobros por comprobante**).
 
 ---
 
@@ -55,6 +56,50 @@ flowchart TD
 ### 💻 Lenguajes y Entornos Compatibles:
 * **Lenguajes:** C#, Python, Java, JavaScript / TypeScript / Node.js, PHP, cURL / Bash.
 * **Infraestructura:** VPS Linux (Ubuntu / Debian), Contenedores Docker, AWS, Google Cloud Platform, Microsoft Azure, Servidores Dedicados y Hosting Compartido.
+
+---
+
+## 🤖 Asistente & Emisión Oficial vía Bot de Telegram
+
+La plataforma incluye un **Bot de Telegram conversacional nativo** desarrollado con **Telegraf**, que permite a dueños de negocio, administradores y vendedores emitir comprobantes oficiales con validez fiscal directamente desde su celular o app de Telegram:
+
+```text
+ 📱 Usuario en Telegram                🤖 Bot de Facturación SUNAT
+         │                                       │
+         ├────── /emitir ───────────────────────>│
+         │<───── Selecciona Factura o Boleta ────┤
+         ├────── RUC o DNI ─────────────────────>│ ──> Consulta Padrón SUNAT/RENIEC
+         │<───── Confirma Cliente y Dirección ───┤
+         ├────── Descripción y Precio ──────────>│ ──> Calcula Base + IGV 18%
+         │<───── Resumen con Botón de Emisión ───┤
+         ├────── [ ✅ Emitir Comprobante ] ─────>│ ──> Firma CDT + Envío a SUNAT
+         │<───── ✅ CDR ACEPTADO + Archivos ─────┤
+         │       • Adjunta XML UBL 2.1 firmado   │
+         │       • Adjunta ZIP CDR oficial       │
+         │       • Botones: Ticket 80mm y PDF A4 │
+```
+
+### 📌 Comandos Disponibles en Telegram:
+* `/start`: Mensaje de bienvenida, verificación de empresa emisora activa y menú de opciones.
+* `/emitir`: Inicia el flujo guiado e interactivo de emisión con botones en línea.
+* `/config`: Consulta el RUC emisor, Razón Social, usuario SOL, entorno activo (**Beta** o **Producción**) y estado del Certificado Digital CDT.
+* `/ayuda`: Muestra la guía rápida de comandos y ayuda tributaria.
+* `/cancelar`: Cancela cualquier proceso de emisión en curso y reinicia la sesión.
+
+### 🌟 Capacidades Clave del Bot:
+1. **Autocompletado con Padrón Oficial:** Al ingresar el número de RUC (11 dígitos) o DNI (8 dígitos), el bot consulta en milisegundos la base de datos oficial y autocompleta la Razón Social y Dirección Fiscal sin que tengas que escribirla.
+2. **Desglose Fiscal Automático:** Ingresas únicamente el precio total en soles y el bot calcula el Valor Neto, IGV (18%) y total a pagar.
+3. **Entrega Inmediata de Comprobantes en el Chat:**
+   * 📄 **Archivo XML firmado UBL 2.1** enviado como documento adjunto listo para descargar.
+   * 🛡️ **Archivo ZIP del CDR de SUNAT** enviado como documento adjunto.
+   * 🧾 **Botón interactivo Ticket (80mm)** para imprimir directamente en ticketeras térmicas.
+   * 📄 **Botón interactivo Formato A4** para visualizar y compartir el comprobante completo.
+4. **Configuración en Servidor:**
+   Basta con definir la variable en tu archivo `server/.env`:
+   ```env
+   TELEGRAM_BOT_TOKEN="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+   ```
+   También puedes activarlo o pausarlo con un solo clic desde el panel de SuperAdmin.
 
 ---
 
