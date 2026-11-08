@@ -10,10 +10,12 @@ import GuiaIntegracion from './components/GuiaIntegracion';
 import TenantUsersPanel from './components/TenantUsersPanel';
 import TenantPlanModal from './components/TenantPlanModal';
 import ApiKeysPanel from './components/ApiKeysPanel';
+import TelegramBotModal from './components/TelegramBotModal';
 import {
   IconDashboard,
   IconInvoice,
   IconFileText,
+  IconLock,
   IconBuilding,
   IconShield,
   IconSearch,
@@ -81,6 +83,7 @@ export default function App() {
   const [isCompanyModalOpen, setIsCompanyModalOpen] = useState(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
+  const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
 
   const fetchSubscriptionInfo = async () => {
@@ -645,6 +648,21 @@ export default function App() {
         }}
       />
 
+      {/* 5. Dedicated Telegram Bot Configuration Modal */}
+      <TelegramBotModal
+        isOpen={isTelegramModalOpen}
+        onClose={() => setIsTelegramModalOpen(false)}
+        activeCompany={activeCompany}
+        API_URL={API_URL}
+        authToken={authToken}
+        subscriptionInfo={subscriptionInfo}
+        onOpenUpgradePlan={() => setIsPlanModalOpen(true)}
+        onSuccess={(bot) => {
+          fetchCompanies();
+          showMsg(bot ? `¡Bot @${bot.username} conectado exitosamente!` : 'Bot de Telegram desvinculado.', 'success');
+        }}
+      />
+
       {/* Sidebar Navigation */}
       <aside className="sidebar">
         <div className="sidebar-top">
@@ -1010,26 +1028,87 @@ export default function App() {
                   <span>Sistemas Integrados</span>
                 </h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
-                  <div className="tailadmin-system-card">
-                    <div className="flex-between" style={{ marginBottom: '12px' }}>
-                      <div className="flex-gap">
-                        <div className="metric-icon-box primary" style={{ width: '42px', height: '42px', borderRadius: '10px' }}>
-                          <IconTelegram size={20} />
+                  <div className="tailadmin-system-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                    <div>
+                      <div className="flex-between" style={{ marginBottom: '12px' }}>
+                        <div className="flex-gap">
+                          <div className="metric-icon-box primary" style={{ width: '42px', height: '42px', borderRadius: '10px' }}>
+                            <IconTelegram size={20} />
+                          </div>
+                          <div>
+                            <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>Telegram Bot</h3>
+                            <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Móvil & Chatbot</span>
+                          </div>
                         </div>
-                        <div>
-                          <h3 style={{ fontSize: '15px', fontWeight: 700, margin: 0 }}>Telegram Bot</h3>
-                          <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Móvil & Chatbot</span>
-                        </div>
+                        {subscriptionInfo?.plan && subscriptionInfo.plan.hasTelegramBot === false && currentUser?.role !== 'SUPERADMIN' ? (
+                          <span className="tailadmin-badge warning" style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                            <IconLock size={11} /> Requiere Plan
+                          </span>
+                        ) : activeCompany?.telegramToken ? (
+                          <span className="tailadmin-badge success">En línea</span>
+                        ) : (
+                          <span className="tailadmin-badge error">Sin Token</span>
+                        )}
                       </div>
-                      {activeCompany?.telegramToken ? (
-                        <span className="tailadmin-badge success">En línea</span>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.45', margin: 0 }}>
+                        {subscriptionInfo?.plan && subscriptionInfo.plan.hasTelegramBot === false && currentUser?.role !== 'SUPERADMIN' ? (
+                          'La emisión por Telegram no está incluida en tu plan actual. Actualiza tu suscripción para emitir desde el celular.'
+                        ) : activeCompany?.telegramBotUsername ? (
+                          <>Conectado a <strong style={{ color: 'var(--primary-color)' }}>@{activeCompany.telegramBotUsername}</strong>. Emite facturas y boletas directamente desde el chat.</>
+                        ) : (
+                          'Emite facturas y boletas directamente desde el chat en cualquier dispositivo móvil mediante comandos rápidos.'
+                        )}
+                      </p>
+                    </div>
+
+                    <div style={{ marginTop: '14px', paddingTop: '10px', borderTop: '1px solid var(--border-color)', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      {subscriptionInfo?.plan && subscriptionInfo.plan.hasTelegramBot === false && currentUser?.role !== 'SUPERADMIN' ? (
+                        <button
+                          type="button"
+                          className="btn btn-warning btn-sm"
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                          onClick={() => setIsPlanModalOpen(true)}
+                        >
+                          <IconLock size={13} />
+                          <span>Mejorar Plan para Activar Telegram</span>
+                        </button>
+                      ) : activeCompany?.telegramToken ? (
+                        <>
+                          {activeCompany.telegramBotUsername && (
+                            <a
+                              href={`https://t.me/${activeCompany.telegramBotUsername}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="btn btn-primary btn-sm"
+                              style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', textDecoration: 'none' }}
+                            >
+                              <IconTelegram size={14} />
+                              <span>Abrir Bot</span>
+                              <IconExternalLink size={12} />
+                            </a>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                            onClick={() => setIsTelegramModalOpen(true)}
+                          >
+                            <IconSettings size={13} />
+                            <span>Gestionar</span>
+                          </button>
+                        </>
                       ) : (
-                        <span className="tailadmin-badge error">Sin Token</span>
+                        <button
+                          type="button"
+                          className="btn btn-primary btn-sm"
+                          style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                          onClick={() => setIsTelegramModalOpen(true)}
+                        >
+                          <IconZap size={14} />
+                          <span>Configurar Bot de Telegram</span>
+                        </button>
                       )}
                     </div>
-                    <p style={{ color: 'var(--text-secondary)', fontSize: '13px', lineHeight: '1.45', margin: 0 }}>
-                      Emite facturas y boletas directamente desde el chat en cualquier dispositivo móvil mediante comandos rápidos.
-                    </p>
                   </div>
 
                   <div className="tailadmin-system-card">
@@ -1736,6 +1815,10 @@ export default function App() {
                 API_URL={API_URL}
                 authToken={authToken}
                 currentUser={currentUser}
+                subscriptionInfo={subscriptionInfo}
+                activeCompany={activeCompany}
+                onOpenUpgradePlan={() => setIsPlanModalOpen(true)}
+                onCompanyUpdated={fetchCompanies}
               />
             </div>
           )}

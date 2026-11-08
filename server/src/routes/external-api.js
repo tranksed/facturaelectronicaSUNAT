@@ -64,6 +64,13 @@ async function authenticateApiKey(req, res, next) {
       });
     }
 
+    if (apiKey.user.role !== 'SUPERADMIN' && apiKey.user.plan && apiKey.user.plan.hasExternalApi === false) {
+      return res.status(403).json({
+        success: false,
+        error: `Tu plan actual (${apiKey.user.plan.name || 'Básico'}) no incluye acceso a la API Externa REST. Por favor actualiza tu suscripción en el panel para habilitar integraciones externas.`
+      });
+    }
+
     // Update last used timestamp async
     prisma.apiKey.update({
       where: { id: apiKey.id },

@@ -13,13 +13,17 @@ const DEFAULT_PLANS = [
     billingPeriod: 'MONTHLY',
     docLimit: 30,
     userLimit: 1,
+    companyLimit: 1,
     durationDays: 30,
+    hasTelegramBot: false,
+    hasExternalApi: false,
+    hasBuzonSol: false,
     featuresJson: JSON.stringify([
       'Hasta 30 comprobantes / mes',
+      '1 Empresa emisora (1 RUC)',
       '1 Usuario de acceso',
       'Emisión de Facturas y Boletas electrónicas',
       'Notas de Crédito y Anulaciones UBL 2.1',
-      'Consulta masiva Buzón SOL & SUNAFIL',
       'Descargas PDF A4 y Ticket 80mm'
     ]),
     isPopular: false,
@@ -27,22 +31,26 @@ const DEFAULT_PLANS = [
     order: 1
   },
   {
-    name: 'Plan Starter',
+    name: 'Plan Starter (Móvil & Chatbot)',
     code: 'STARTER',
-    description: 'Para pequeños negocios y profesionales con emisión mensual regular.',
+    description: 'Para pequeños negocios con emisión mensual regular y ventas por Telegram.',
     price: 29.00,
     currency: 'PEN',
     billingPeriod: 'MONTHLY',
     docLimit: 100,
     userLimit: 2,
+    companyLimit: 1,
     durationDays: 30,
+    hasTelegramBot: true,
+    hasExternalApi: false,
+    hasBuzonSol: true,
     featuresJson: JSON.stringify([
       'Hasta 100 comprobantes / mes',
+      '1 Empresa emisora (1 RUC)',
       '2 Usuarios (Admin + Contador)',
       'Emisión Facturas, Boletas y Notas UBL 2.1',
+      '🤖 Bot y emisión guiada vía Telegram',
       'Formatos A4, Ticket 80mm y 58mm con logo',
-      'Bot y notificaciones automáticas Telegram',
-      'Integración con API Externa REST',
       'Consulta Buzón SOL y Casilla SUNAFIL'
     ]),
     isPopular: false,
@@ -50,20 +58,25 @@ const DEFAULT_PLANS = [
     order: 2
   },
   {
-    name: 'Plan Emprendedor',
+    name: 'Plan Emprendedor (API & POS)',
     code: 'EMPRENDEDOR',
-    description: 'La opción más elegida para pymes y empresas en constante crecimiento.',
+    description: 'Para pymes con sistemas externos, punto de venta (POS) y Odoo ERP.',
     price: 59.00,
     currency: 'PEN',
     billingPeriod: 'MONTHLY',
     docLimit: 300,
     userLimit: 3,
+    companyLimit: 3,
     durationDays: 30,
+    hasTelegramBot: true,
+    hasExternalApi: true,
+    hasBuzonSol: true,
     featuresJson: JSON.stringify([
       'Hasta 300 comprobantes / mes',
+      'Hasta 3 Empresas (Multi-RUC)',
       '3 Usuarios (Sub-admin, Contador, Operador)',
-      'Múltiples series personalizadas',
-      'API Externa para WHMCS y ERPs (Unitario y Masivo)',
+      '🔌 API Externa REST para POS, Odoo, WHMCS y Apps',
+      '🤖 Bot de Telegram oficial y multi-dispositivo',
       'Descarga automática de XML y CDR firmados',
       'Módulo Buzón SOL y SUNAFIL prioritario',
       'Soporte prioritario por WhatsApp'
@@ -73,7 +86,7 @@ const DEFAULT_PLANS = [
     order: 3
   },
   {
-    name: 'Plan Corporativo',
+    name: 'Plan Corporativo (Ilimitado)',
     code: 'CORPORATIVO',
     description: 'Para empresas consolidadas, plataformas e-commerce y facturación a gran escala.',
     price: 149.00,
@@ -81,13 +94,19 @@ const DEFAULT_PLANS = [
     billingPeriod: 'MONTHLY',
     docLimit: -1, // Ilimitado
     userLimit: 8,
+    companyLimit: -1, // Ilimitado
     durationDays: 30,
+    hasTelegramBot: true,
+    hasExternalApi: true,
+    hasBuzonSol: true,
     featuresJson: JSON.stringify([
       'Comprobantes ILIMITADOS al mes',
+      '🏢 Empresas emisoras ILIMITADAS (Multi-RUC)',
       'Hasta 8 Usuarios con roles y permisos avanzados',
-      'API Externa Masiva de Alta Velocidad',
-      'Sincronización automatizada con WHMCS',
-      'Almacenamiento Cloud S3 / VPS File Server',
+      '🔌 API Externa Masiva de Alta Velocidad (Batch)',
+      '🤖 Bot de Telegram exclusivo y multi-dispositivo',
+      'Sincronización automatizada con WHMCS y Odoo',
+      'Almacenamiento Cloud S3 / Cloudflare R2 / VPS',
       'Personalización completa de comprobantes',
       'Soporte VIP 24/7'
     ]),
@@ -99,12 +118,20 @@ const DEFAULT_PLANS = [
 
 async function seedDefaultPlans() {
   try {
-    const count = await prisma.plan.count();
-    if (count === 0) {
-      for (const p of DEFAULT_PLANS) {
-        await prisma.plan.create({ data: p });
-      }
-      console.log('Seeded default plans successfully');
+    for (const p of DEFAULT_PLANS) {
+      await prisma.plan.upsert({
+        where: { code: p.code },
+        update: {
+          hasTelegramBot: p.hasTelegramBot,
+          hasExternalApi: p.hasExternalApi,
+          hasBuzonSol: p.hasBuzonSol,
+          companyLimit: p.companyLimit,
+          featuresJson: p.featuresJson,
+          name: p.name,
+          description: p.description
+        },
+        create: p
+      });
     }
   } catch (e) {
     console.error('Error seeding default plans:', e.message);

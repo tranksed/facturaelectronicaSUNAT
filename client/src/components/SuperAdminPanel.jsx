@@ -1323,6 +1323,31 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
                       <IconCheck size={14} style={{ color: '#10b981' }} />
                       <span>{p.usersCount || 0} inquilinos suscritos</span>
                     </div>
+
+                    {/* Módulos Habilitados */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' }}>
+                      <span className="tailadmin-badge primary" style={{ fontSize: '10px', padding: '2px 6px' }}>
+                        🌐 Web
+                      </span>
+                      {p.hasTelegramBot !== false && (
+                        <span className="tailadmin-badge success" style={{ fontSize: '10px', padding: '2px 6px' }}>
+                          🤖 Telegram
+                        </span>
+                      )}
+                      {p.hasExternalApi !== false && (
+                        <span className="tailadmin-badge warning" style={{ fontSize: '10px', padding: '2px 6px' }}>
+                          🔌 API REST
+                        </span>
+                      )}
+                      {p.hasBuzonSol !== false && (
+                        <span className="tailadmin-badge info" style={{ fontSize: '10px', padding: '2px 6px' }}>
+                          📬 Buzón
+                        </span>
+                      )}
+                      <span className="tailadmin-badge" style={{ fontSize: '10px', padding: '2px 6px', background: 'var(--bg-subtle)' }}>
+                        🏢 {p.companyLimit === -1 ? 'Multi-RUC ∞' : `${p.companyLimit || 1} RUC`}
+                      </span>
+                    </div>
                   </div>
                 </div>
 

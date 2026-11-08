@@ -63,7 +63,8 @@ model Company {
   isProduction       Boolean   @default(false)
   
   // Bot de Telegram específico de esta empresa
-  telegramToken      String?
+  telegramToken       String?
+  telegramBotUsername String?
   
   isDefault          Boolean   @default(false)
   createdAt          DateTime  @default(now())
@@ -182,8 +183,14 @@ model Plan {
   billingPeriod  String         @default("MONTHLY") // "MONTHLY" | "ANNUAL"
   docLimit       Int            @default(30) // -1 para ilimitado
   userLimit      Int            @default(1)
+  companyLimit   Int            @default(1) // -1 para ilimitado
   durationDays   Int            @default(30)
   featuresJson   String         @default("[]")
+  
+  // Feature Flags por Plan
+  hasTelegramBot Boolean        @default(true)
+  hasExternalApi Boolean        @default(true)
+  hasBuzonSol    Boolean        @default(true)
   isPopular      Boolean        @default(false)
   isActive       Boolean        @default(true)
   order          Int            @default(0)

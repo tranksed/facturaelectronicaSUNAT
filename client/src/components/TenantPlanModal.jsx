@@ -903,12 +903,22 @@ export default function TenantPlanModal({ isOpen, onClose, API_URL, authToken, c
                           <IconCheck size={14} style={{ color: '#10b981' }} />
                           <span>{plan.userLimit} {plan.userLimit === 1 ? 'Usuario' : 'Usuarios'}</span>
                         </div>
-                        {Array.isArray(plan.features) && plan.features.slice(2, 4).map((f, i) => (
-                          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', color: 'var(--text-secondary)', fontSize: '11.5px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px', color: 'var(--text-primary)' }}>
+                          <IconCheck size={14} style={{ color: '#10b981' }} />
+                          <span>{plan.companyLimit === -1 ? 'Empresas Ilimitadas' : (plan.companyLimit > 1 ? `Hasta ${plan.companyLimit} Empresas` : '1 Empresa (1 RUC)')}</span>
+                        </div>
+                        {plan.hasTelegramBot && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', color: 'var(--text-secondary)', fontSize: '11.5px' }}>
                             <IconCheck size={12} style={{ color: '#10b981' }} />
-                            <span>{f}</span>
+                            <span>🤖 Bot Móvil de Telegram</span>
                           </div>
-                        ))}
+                        )}
+                        {plan.hasExternalApi && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px', color: 'var(--text-secondary)', fontSize: '11.5px' }}>
+                            <IconCheck size={12} style={{ color: '#10b981' }} />
+                            <span>🔌 API Externa REST (POS / Odoo)</span>
+                          </div>
+                        )}
                       </div>
                     </div>
 

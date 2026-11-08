@@ -4,6 +4,7 @@ const { authenticateToken } = require('../middleware/auth');
 const { extractKeysFromPfx } = require('../services/xml-signer');
 const { compressXml, sendBillToSunat } = require('../services/sunat-client');
 const { consultarRuc } = require('../services/padron-service');
+const { startBot } = require('../bot/telegram-bot');
 
 const router = express.Router();
 
@@ -39,6 +40,8 @@ router.get('/', async (req, res) => {
       contacto: c.contacto,
       hasCert: !!c.pfxCert,
       isProduction: c.isProduction,
+      telegramToken: c.telegramToken || '',
+      telegramBotUsername: c.telegramBotUsername || '',
       isDefault: c.isDefault,
       invoiceCount: c._count?.invoices || 0,
       createdAt: c.createdAt
@@ -61,6 +64,21 @@ router.post('/', async (req, res) => {
 
     if (!ruc || !/^\d{11}$/.test(ruc)) {
       return res.status(400).json({ error: 'Debe ingresar un RUC válido de 11 dígitos.' });
+    }
+
+    // Check companyLimit in tenant's plan
+    if (req.user.role !== 'SUPERADMIN') {
+      const userWithPlan = await prisma.user.findUnique({
+        where: { id: effectiveUserId },
+        include: { plan: true }
+      });
+      const allowedCompanies = userWithPlan?.plan?.companyLimit ?? 1;
+      const currentCompanyCount = await prisma.company.count({ where: { userId: effectiveUserId } });
+      if (allowedCompanies !== -1 && currentCompanyCount >= allowedCompanies) {
+        return res.status(403).json({
+          error: `Has alcanzado el límite de ${allowedCompanies} empresa(s) permitidas por tu plan actual (${userWithPlan?.plan?.name || 'Básico'}). Actualiza tu plan para registrar más RUCs.`
+        });
+      }
     }
 
     // Check if user already has this RUC
@@ -147,6 +165,7 @@ router.get('/:id', async (req, res) => {
       hasCert: !!company.pfxCert,
       isProduction: company.isProduction,
       telegramToken: company.telegramToken || '',
+      telegramBotUsername: company.telegramBotUsername || '',
       isDefault: company.isDefault
     });
   } catch (error) {
@@ -203,6 +222,7 @@ router.put('/:id', async (req, res) => {
     if (claveSol) updateData.claveSol = claveSol;
     if (isProduction !== undefined) updateData.isProduction = !!isProduction;
     if (telegramToken !== undefined) updateData.telegramToken = telegramToken;
+    if (req.body.telegramBotUsername !== undefined) updateData.telegramBotUsername = req.body.telegramBotUsername;
 
     if (pfxPassword) updateData.pfxPassword = pfxPassword;
     if (pfxCertBase64) {
@@ -324,6 +344,125 @@ router.post('/:id/test', async (req, res) => {
     });
   } catch (error) {
     res.status(400).json({ error: error.message });
+  }
+});
+
+/**
+ * POST /api/companies/:id/telegram-token
+ * Validates a bot token with Telegram API (getMe) and saves it to company.
+ */
+router.post('/:id/telegram-token', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { token } = req.body;
+    const effectiveUserId = req.user.parentId || req.user.id;
+
+    const company = await prisma.company.findFirst({
+      where: req.user.role === 'SUPERADMIN' ? { id } : { id, userId: effectiveUserId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Empresa no encontrada.' });
+    }
+
+    // Verify if user's plan permits Telegram Bot
+    if (req.user.role !== 'SUPERADMIN') {
+      const userWithPlan = await prisma.user.findUnique({
+        where: { id: effectiveUserId },
+        include: { plan: true }
+      });
+      if (userWithPlan?.plan && userWithPlan.plan.hasTelegramBot === false) {
+        return res.status(403).json({
+          error: 'Tu plan actual no incluye la integración con Bot de Telegram. Mejora tu plan para activar este módulo.'
+        });
+      }
+    }
+
+    const cleanToken = (token || '').trim();
+    if (!cleanToken) {
+      // Disconnect token
+      await prisma.company.update({
+        where: { id },
+        data: { telegramToken: null, telegramBotUsername: null }
+      });
+      return res.json({ success: true, message: 'Bot de Telegram desvinculado de la empresa.', disconnected: true });
+    }
+
+    // Validate token against Telegram official Bot API
+    let tgRes;
+    try {
+      tgRes = await fetch(`https://api.telegram.org/bot${cleanToken}/getMe`);
+    } catch (netErr) {
+      return res.status(400).json({ error: 'No se pudo conectar con la API de Telegram: ' + netErr.message });
+    }
+
+    const tgData = await tgRes.json();
+    if (!tgData.ok) {
+      return res.status(400).json({
+        error: `Token rechazado por Telegram: ${tgData.description || 'Token inválido o revocado'}`
+      });
+    }
+
+    const botUser = tgData.result;
+    const botUsername = botUser.username;
+
+    // Update company in DB
+    const updated = await prisma.company.update({
+      where: { id },
+      data: {
+        telegramToken: cleanToken,
+        telegramBotUsername: botUsername
+      }
+    });
+
+    // Start/restart the bot runner with this token
+    try {
+      const appUrl = process.env.APP_URL || 'http://localhost:3000';
+      startBot(cleanToken, appUrl);
+    } catch (botErr) {
+      console.warn('Bot started with warning:', botErr.message);
+    }
+
+    res.json({
+      success: true,
+      message: `¡Bot de Telegram vinculado exitosamente! Conectado como @${botUsername}`,
+      bot: {
+        id: botUser.id,
+        firstName: botUser.first_name,
+        username: botUsername,
+        telegramLink: `https://t.me/${botUsername}`
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al vincular Bot de Telegram: ' + error.message });
+  }
+});
+
+/**
+ * DELETE /api/companies/:id/telegram-token
+ * Disconnects the Telegram Bot for this company.
+ */
+router.delete('/:id/telegram-token', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const effectiveUserId = req.user.parentId || req.user.id;
+
+    const company = await prisma.company.findFirst({
+      where: req.user.role === 'SUPERADMIN' ? { id } : { id, userId: effectiveUserId }
+    });
+
+    if (!company) {
+      return res.status(404).json({ error: 'Empresa no encontrada.' });
+    }
+
+    await prisma.company.update({
+      where: { id },
+      data: { telegramToken: null, telegramBotUsername: null }
+    });
+
+    res.json({ success: true, message: 'Bot de Telegram desvinculado exitosamente.' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error al desvincular Bot de Telegram: ' + error.message });
   }
 });
 

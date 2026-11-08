@@ -6,6 +6,28 @@ const { compressXml, sendBillToSunat } = require('../services/sunat-client');
 const { consultarRuc, consultarDni } = require('../services/padron-service');
 
 let botInstance = null;
+let currentBotToken = null;
+
+/**
+ * Returns the company corresponding to this bot, falling back to default/first company or config.
+ */
+async function getActiveCompanyForBot() {
+  if (currentBotToken) {
+    const comp = await prisma.company.findFirst({
+      where: { telegramToken: currentBotToken }
+    });
+    if (comp) return comp;
+  }
+  const defaultComp = await prisma.company.findFirst({
+    where: { isDefault: true }
+  });
+  if (defaultComp) return defaultComp;
+  
+  const anyComp = await prisma.company.findFirst();
+  if (anyComp) return anyComp;
+
+  return await prisma.config.findFirst();
+}
 
 /**
  * Helper to determine the next invoice ID from the database.
@@ -45,6 +67,7 @@ async function getNextInvoiceId(tipoDoc) {
  * @param {string} appUrl - Base URL of the backend (for receipt links)
  */
 function startBot(token, appUrl) {
+  currentBotToken = token;
   if (botInstance) {
     try {
       botInstance.stop('Restarting');
@@ -62,7 +85,7 @@ function startBot(token, appUrl) {
   // Command handlers
   bot.start(async (ctx) => {
     ctx.session = {}; // Clear session
-    const config = await prisma.config.findFirst();
+    const config = await getActiveCompanyForBot();
     if (!config) {
       return ctx.reply('⚠️ El sistema no está configurado. Por favor, ingresa al Dashboard Web para registrar tus credenciales.');
     }
@@ -90,7 +113,7 @@ function startBot(token, appUrl) {
   });
 
   bot.command('config', async (ctx) => {
-    const config = await prisma.config.findFirst();
+    const config = await getActiveCompanyForBot();
     if (!config) {
       return ctx.reply('⚠️ No hay configuración en la base de datos.');
     }
@@ -113,7 +136,7 @@ function startBot(token, appUrl) {
 
   // Flow triggering
   bot.command('emitir', async (ctx) => {
-    const config = await prisma.config.findFirst();
+    const config = await getActiveCompanyForBot();
     if (!config || !config.pfxCert) {
       return ctx.reply('⚠️ No puedes emitir comprobantes. Configura tu RUC, credenciales y certificado digital (.pfx) en el Dashboard Web primero.');
     }
@@ -280,7 +303,7 @@ function startBot(token, appUrl) {
     ctx.editMessageText('⏳ Procesando... Generando XML de Facturación...');
 
     try {
-      const config = await prisma.config.findFirst();
+      const config = await getActiveCompanyForBot();
       if (!config) throw new Error('No se encontró la configuración del emisor.');
 
       const nextId = await getNextInvoiceId(ctx.session.docType);

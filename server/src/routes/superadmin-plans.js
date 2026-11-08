@@ -49,8 +49,12 @@ router.post('/', async (req, res) => {
       billingPeriod = 'MONTHLY',
       docLimit = 30,
       userLimit = 1,
+      companyLimit = 1,
       durationDays = 30,
       features = [],
+      hasTelegramBot = true,
+      hasExternalApi = true,
+      hasBuzonSol = true,
       isPopular = false,
       isActive = true,
       order = 0
@@ -77,7 +81,11 @@ router.post('/', async (req, res) => {
         billingPeriod,
         docLimit: parseInt(docLimit, 10),
         userLimit: parseInt(userLimit, 10),
+        companyLimit: parseInt(companyLimit, 10) || 1,
         durationDays: parseInt(durationDays, 10) || 30,
+        hasTelegramBot: !!hasTelegramBot,
+        hasExternalApi: !!hasExternalApi,
+        hasBuzonSol: !!hasBuzonSol,
         featuresJson: JSON.stringify(Array.isArray(features) ? features : []),
         isPopular: !!isPopular,
         isActive: !!isActive,
@@ -112,8 +120,12 @@ router.put('/:id', async (req, res) => {
       billingPeriod,
       docLimit,
       userLimit,
+      companyLimit,
       durationDays,
       features,
+      hasTelegramBot,
+      hasExternalApi,
+      hasBuzonSol,
       isPopular,
       isActive,
       order
@@ -127,8 +139,12 @@ router.put('/:id', async (req, res) => {
     if (billingPeriod !== undefined) data.billingPeriod = billingPeriod;
     if (docLimit !== undefined) data.docLimit = parseInt(docLimit, 10);
     if (userLimit !== undefined) data.userLimit = parseInt(userLimit, 10);
+    if (companyLimit !== undefined) data.companyLimit = parseInt(companyLimit, 10);
     if (durationDays !== undefined) data.durationDays = parseInt(durationDays, 10);
     if (features !== undefined) data.featuresJson = JSON.stringify(Array.isArray(features) ? features : []);
+    if (hasTelegramBot !== undefined) data.hasTelegramBot = !!hasTelegramBot;
+    if (hasExternalApi !== undefined) data.hasExternalApi = !!hasExternalApi;
+    if (hasBuzonSol !== undefined) data.hasBuzonSol = !!hasBuzonSol;
     if (isPopular !== undefined) data.isPopular = !!isPopular;
     if (isActive !== undefined) data.isActive = !!isActive;
     if (order !== undefined) data.order = parseInt(order, 10);

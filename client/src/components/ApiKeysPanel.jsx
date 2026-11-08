@@ -14,10 +14,27 @@ import {
   IconFileText,
   IconSearch,
   IconExternalLink,
+  IconTelegram,
+  IconLock,
   LoaderCircleIcon
 } from './Icons';
 
-export default function ApiKeysPanel({ API_URL, authToken, currentUser }) {
+export default function ApiKeysPanel({
+  API_URL,
+  authToken,
+  currentUser,
+  subscriptionInfo,
+  activeCompany,
+  onOpenUpgradePlan,
+  onCompanyUpdated
+}) {
+  const [mainTab, setMainTab] = useState('api'); // 'api' | 'telegram'
+  const [telegramTokenInput, setTelegramTokenInput] = useState('');
+  const [telegramLoading, setTelegramLoading] = useState(false);
+  const [telegramDisconnecting, setTelegramDisconnecting] = useState(false);
+  const [telegramStatus, setTelegramStatus] = useState(null);
+  const [telegramError, setTelegramError] = useState(null);
+
   const [keys, setKeys] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +70,74 @@ export default function ApiKeysPanel({ API_URL, authToken, currentUser }) {
     fetchKeys();
     fetchCompanies();
   }, []);
+
+  useEffect(() => {
+    if (activeCompany) {
+      setTelegramTokenInput(activeCompany.telegramToken || '');
+    }
+  }, [activeCompany]);
+
+  const handleConnectTelegram = async (e) => {
+    if (e) e.preventDefault();
+    if (!telegramTokenInput.trim()) {
+      setTelegramError('Ingresa un token de bot válido.');
+      return;
+    }
+    if (!activeCompany?.id) {
+      setTelegramError('Selecciona una empresa emisora primero.');
+      return;
+    }
+    setTelegramLoading(true);
+    setTelegramStatus(null);
+    setTelegramError(null);
+    try {
+      const res = await fetch(`${API_URL}/api/companies/${activeCompany.id}/telegram-token`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ token: telegramTokenInput.trim() })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTelegramStatus(data.message || 'Bot conectado exitosamente.');
+        if (onCompanyUpdated) onCompanyUpdated();
+      } else {
+        setTelegramError(data.error || 'No se pudo conectar el bot.');
+      }
+    } catch (err) {
+      setTelegramError('Error al contactar el servidor: ' + err.message);
+    } finally {
+      setTelegramLoading(false);
+    }
+  };
+
+  const handleDisconnectTelegram = async () => {
+    if (!window.confirm('¿Desvincular el Bot de Telegram de esta empresa?')) return;
+    if (!activeCompany?.id) return;
+    setTelegramDisconnecting(true);
+    setTelegramStatus(null);
+    setTelegramError(null);
+    try {
+      const res = await fetch(`${API_URL}/api/companies/${activeCompany.id}/telegram-token`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTelegramTokenInput('');
+        setTelegramStatus('Bot desvinculado exitosamente.');
+        if (onCompanyUpdated) onCompanyUpdated();
+      } else {
+        setTelegramError(data.error || 'No se pudo desvincular el bot.');
+      }
+    } catch (err) {
+      setTelegramError('Error de red: ' + err.message);
+    } finally {
+      setTelegramDisconnecting(false);
+    }
+  };
 
   const showMsg = (text, type = 'success') => {
     setMessage({ text, type });
@@ -762,6 +847,79 @@ add_hook('InvoicePaid', 1, function($vars) {
         </div>
       )}
 
+      {/* Selector de Pestaña Principal: API REST vs Bot de Telegram */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
+        <button
+          type="button"
+          className={`btn ${mainTab === 'api' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setMainTab('api')}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 18px', borderRadius: '8px' }}
+        >
+          <IconCode size={16} />
+          <span>🔌 API REST & SDKs (POS, Odoo, WHMCS)</span>
+        </button>
+
+        <button
+          type="button"
+          className={`btn ${mainTab === 'telegram' ? 'btn-primary' : 'btn-secondary'}`}
+          onClick={() => setMainTab('telegram')}
+          style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 18px', borderRadius: '8px' }}
+        >
+          <IconTelegram size={16} />
+          <span>🤖 Bot de Telegram Oficial</span>
+          {activeCompany?.telegramToken ? (
+            <span style={{ fontSize: '10.5px', background: '#10b981', color: '#fff', padding: '2px 8px', borderRadius: '10px', marginLeft: '4px', fontWeight: 700 }}>
+              En línea
+            </span>
+          ) : (
+            <span style={{ fontSize: '10.5px', background: '#ef4444', color: '#fff', padding: '2px 8px', borderRadius: '10px', marginLeft: '4px', fontWeight: 700 }}>
+              Sin Token
+            </span>
+          )}
+        </button>
+      </div>
+
+      {mainTab === 'api' && (
+        <>
+          {/* Locked Feature Notice for API */}
+          {subscriptionInfo?.plan && subscriptionInfo.plan.hasExternalApi === false && currentUser?.role !== 'SUPERADMIN' && (
+            <div style={{
+              padding: '16px 20px',
+              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(239, 68, 68, 0.05) 100%)',
+              border: '1px solid rgba(245, 158, 11, 0.3)',
+              borderRadius: '12px',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              flexWrap: 'wrap',
+              gap: '12px',
+              marginBottom: '20px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: 'rgba(245, 158, 11, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#d97706' }}>
+                  <IconLock size={20} />
+                </div>
+                <div>
+                  <strong style={{ fontSize: '14px', color: 'var(--text-primary)', display: 'block' }}>
+                    Módulo API Externa no incluido en tu Plan
+                  </strong>
+                  <span style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
+                    Tu plan actual ({subscriptionInfo?.plan?.name || 'Básico'}) no incluye la API Externa. Actualiza al <strong>Plan Emprendedor</strong> o superior para habilitar API Keys para POS, Odoo y WHMCS.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="btn btn-warning"
+                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                onClick={onOpenUpgradePlan}
+              >
+                <IconZap size={14} />
+                <span>Mejorar Plan Ahora</span>
+              </button>
+            </div>
+          )}
+
       {/* Clave recién generada */}
       {newlyCreatedKey && (
         <div className="glass-card" style={{ padding: '18px 20px', margin: '16px 0', border: '2px solid #10b981', background: 'rgba(16, 185, 129, 0.05)' }}>
@@ -1370,6 +1528,245 @@ add_hook('InvoicePaid', 1, function($vars) {
           {codeSnippets[activeLangTab]}
         </pre>
       </div>
+      </>
+      )}
+
+      {/* =========================================================================
+          CONTENIDO: PESTAÑA TELEGRAM BOT
+          ========================================================================= */}
+      {mainTab === 'telegram' && (
+        <div className="animate-fade-in">
+          {/* Header & Status Card */}
+          <div className="glass-card" style={{ marginBottom: '20px', padding: '22px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '14px', marginBottom: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div className="metric-icon-box primary" style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(44, 165, 224, 0.15)', color: '#2CA5E0' }}>
+                  <IconTelegram size={28} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Bot Oficial de Facturación Telegram (SUNAT)
+                  </h3>
+                  <span style={{ fontSize: '12.5px', color: 'var(--text-muted)' }}>
+                    Permite a ti y a tus vendedores emitir Facturas y Boletas oficiales directamente por chat desde cualquier celular.
+                  </span>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span className={`status-pill ${activeCompany?.isProduction ? 'prod' : 'beta'}`}>
+                  {activeCompany?.isProduction ? 'Entorno SUNAT: Producción' : 'Entorno SUNAT: Beta'}
+                </span>
+                <span style={{ fontSize: '12px', color: 'var(--text-secondary)', background: 'var(--bg-subtle)', padding: '4px 10px', borderRadius: '6px', border: '1px solid var(--border-color)' }}>
+                  🏢 {activeCompany?.razonSocial || 'Mi Empresa'} (RUC: {activeCompany?.ruc})
+                </span>
+              </div>
+            </div>
+
+            {/* Locked feature notice */}
+            {subscriptionInfo?.plan && subscriptionInfo.plan.hasTelegramBot === false && currentUser?.role !== 'SUPERADMIN' ? (
+              <div style={{
+                padding: '24px 20px',
+                background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08) 0%, rgba(245, 158, 11, 0.08) 100%)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                borderRadius: '12px',
+                textAlign: 'center',
+                margin: '12px 0'
+              }}>
+                <div style={{ width: '48px', height: '48px', margin: '0 auto 10px auto', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                  <IconLock size={24} />
+                </div>
+                <h4 style={{ margin: '0 0 6px 0', fontSize: '16px', color: 'var(--text-primary)' }}>
+                  Módulo de Telegram no incluido en tu Plan
+                </h4>
+                <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '480px', marginInline: 'auto' }}>
+                  Tu plan actual (<strong>{subscriptionInfo?.plan?.name || 'Básico'}</strong>) no incluye la emisión móvil por Telegram. Actualiza al <strong>Plan Starter</strong> o superior para habilitar este asistente.
+                </p>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={onOpenUpgradePlan}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <IconZap size={14} />
+                  <span>Ver Planes y Mejorar Suscripción</span>
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Feedback messages */}
+                {telegramStatus && (
+                  <div className="alert-banner alert-success" style={{ margin: '14px 0' }}>
+                    <IconCheck size={16} />
+                    <span>{telegramStatus}</span>
+                  </div>
+                )}
+                {telegramError && (
+                  <div className="alert-banner alert-error" style={{ margin: '14px 0' }}>
+                    <IconAlertTriangle size={16} />
+                    <span>{telegramError}</span>
+                  </div>
+                )}
+
+                {/* Connection Box */}
+                <div style={{
+                  padding: '18px',
+                  borderRadius: '12px',
+                  border: activeCompany?.telegramToken ? '1px solid rgba(16, 185, 129, 0.35)' : '1px solid var(--border-color)',
+                  background: activeCompany?.telegramToken ? 'rgba(16, 185, 129, 0.04)' : 'var(--bg-subtle, #f8fafc)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '14px',
+                  margin: '16px 0'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{
+                      width: '14px',
+                      height: '14px',
+                      borderRadius: '50%',
+                      background: activeCompany?.telegramToken ? '#10b981' : '#ef4444',
+                      boxShadow: activeCompany?.telegramToken ? '0 0 10px #10b981' : 'none'
+                    }} />
+                    <div>
+                      <strong style={{ fontSize: '15px', color: 'var(--text-primary)', display: 'block' }}>
+                        {activeCompany?.telegramToken ? 'Bot Conectado y En Línea' : 'Sin Bot Vinculado'}
+                      </strong>
+                      <span style={{ fontSize: '12.5px', color: 'var(--text-muted)' }}>
+                        {activeCompany?.telegramToken && activeCompany?.telegramBotUsername ? (
+                          <>Usuario oficial: <strong style={{ color: '#2CA5E0' }}>@{activeCompany.telegramBotUsername}</strong></>
+                        ) : (
+                          'Ingresa tu token de BotFather para conectar tu bot de Telegram'
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  {activeCompany?.telegramToken && (
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      {activeCompany?.telegramBotUsername && (
+                        <a
+                          href={`https://t.me/${activeCompany.telegramBotUsername}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn btn-primary btn-sm"
+                          style={{ display: 'flex', alignItems: 'center', gap: '6px', textDecoration: 'none', padding: '8px 14px' }}
+                        >
+                          <IconTelegram size={15} />
+                          <span>Abrir Bot en Telegram</span>
+                          <IconExternalLink size={13} />
+                        </a>
+                      )}
+                      <button
+                        type="button"
+                        className="btn btn-danger-outline btn-sm"
+                        onClick={handleDisconnectTelegram}
+                        disabled={telegramDisconnecting}
+                      >
+                        {telegramDisconnecting ? 'Desvinculando...' : 'Desvincular Bot'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Token Configuration Form */}
+                <form onSubmit={handleConnectTelegram} style={{ marginTop: '16px' }}>
+                  <div className="form-group-field" style={{ marginBottom: '14px' }}>
+                    <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 600 }}>Token HTTP API de Telegram (Provisto por @BotFather)</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '11px' }}>
+                        Formato: <code>7123456789:AAHk1_z49...</code>
+                      </span>
+                    </label>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <input
+                        type="text"
+                        className="input-field"
+                        style={{ flex: 1, fontFamily: 'monospace', fontSize: '13px' }}
+                        placeholder="Pega aquí el Token que te entregó @BotFather"
+                        value={telegramTokenInput}
+                        onChange={(e) => setTelegramTokenInput(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={telegramLoading}
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', padding: '0 18px' }}
+                      >
+                        {telegramLoading ? (
+                          <>
+                            <LoaderCircleIcon className="animate-spin" size={16} />
+                            <span>Verificando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <IconZap size={16} />
+                            <span>Verificar Token & Conectar</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+
+                {/* 3 Step Tutorial Guide */}
+                <div style={{
+                  background: 'var(--bg-subtle, #f8fafc)',
+                  padding: '16px',
+                  borderRadius: '10px',
+                  border: '1px solid var(--border-color)',
+                  margin: '18px 0'
+                }}>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
+                    📖 ¿Cómo crear tu Bot de Telegram en 1 minuto? (Paso a Paso con @BotFather)
+                  </span>
+                  <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: '1.65' }}>
+                    <li>
+                      Abre Telegram en tu teléfono o PC y busca al bot oficial <strong>@BotFather</strong> (bot oficial verificado con check azul).
+                    </li>
+                    <li>
+                      Envía el comando <code>/newbot</code>. Escribe el nombre de tu negocio (ej. <em>Facturación Mi Empresa</em>) y luego un nombre de usuario único que termine en <code>bot</code> (ej. <em>miempresafacturabot</em>).
+                    </li>
+                    <li>
+                      @BotFather te entregará tu <strong>HTTP API Token</strong>. Cópialo, pégalo en el recuadro superior y pulsa <strong>Verificar Token & Conectar</strong>. ¡Tu bot estará listo para emitir al instante!
+                    </li>
+                  </ol>
+                </div>
+
+                {/* Supported Commands Grid */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                  <div style={{ padding: '12px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <code style={{ fontSize: '13px', color: '#2CA5E0', fontWeight: 700 }}>/emitir</code>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                      Inicia el asistente guiado para Factura o Boleta con autocompletado en padrón SUNAT/RENIEC.
+                    </p>
+                  </div>
+                  <div style={{ padding: '12px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <code style={{ fontSize: '13px', color: '#2CA5E0', fontWeight: 700 }}>/config</code>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                      Consulta RUC emisor, razón social, entorno activo (Beta/Producción) y certificado CDT.
+                    </p>
+                  </div>
+                  <div style={{ padding: '12px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <code style={{ fontSize: '13px', color: '#2CA5E0', fontWeight: 700 }}>/ayuda</code>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                      Muestra la lista de comandos disponibles y ayuda fiscal.
+                    </p>
+                  </div>
+                  <div style={{ padding: '12px', background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
+                    <code style={{ fontSize: '13px', color: '#2CA5E0', fontWeight: 700 }}>/cancelar</code>
+                    <p style={{ margin: '4px 0 0 0', fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                      Cancela cualquier emisión en curso y reinicia la conversación.
+                    </p>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal Generar Nueva API Key */}
       {isModalOpen && (

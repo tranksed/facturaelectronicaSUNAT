@@ -9,7 +9,11 @@ export default function AdminPlanModal({ isOpen, onClose, plan, API_URL, authTok
   const [currency, setCurrency] = useState('PEN');
   const [docLimit, setDocLimit] = useState('30');
   const [userLimit, setUserLimit] = useState('1');
+  const [companyLimit, setCompanyLimit] = useState('1');
   const [durationDays, setDurationDays] = useState('30');
+  const [hasTelegramBot, setHasTelegramBot] = useState(true);
+  const [hasExternalApi, setHasExternalApi] = useState(true);
+  const [hasBuzonSol, setHasBuzonSol] = useState(true);
   const [featuresText, setFeaturesText] = useState('');
   const [isPopular, setIsPopular] = useState(false);
   const [isActive, setIsActive] = useState(true);
@@ -26,7 +30,11 @@ export default function AdminPlanModal({ isOpen, onClose, plan, API_URL, authTok
       setCurrency(plan.currency || 'PEN');
       setDocLimit(String(plan.docLimit ?? 30));
       setUserLimit(String(plan.userLimit ?? 1));
+      setCompanyLimit(String(plan.companyLimit ?? 1));
       setDurationDays(String(plan.durationDays ?? 30));
+      setHasTelegramBot(plan.hasTelegramBot !== false);
+      setHasExternalApi(plan.hasExternalApi !== false);
+      setHasBuzonSol(plan.hasBuzonSol !== false);
       const feats = Array.isArray(plan.features) ? plan.features.join('\n') : '';
       setFeaturesText(feats);
       setIsPopular(!!plan.isPopular);
@@ -40,7 +48,11 @@ export default function AdminPlanModal({ isOpen, onClose, plan, API_URL, authTok
       setCurrency('PEN');
       setDocLimit('30');
       setUserLimit('1');
+      setCompanyLimit('1');
       setDurationDays('30');
+      setHasTelegramBot(true);
+      setHasExternalApi(true);
+      setHasBuzonSol(true);
       setFeaturesText('');
       setIsPopular(false);
       setIsActive(true);
@@ -79,7 +91,11 @@ export default function AdminPlanModal({ isOpen, onClose, plan, API_URL, authTok
       currency,
       docLimit: parseInt(docLimit, 10),
       userLimit: parseInt(userLimit, 10),
+      companyLimit: parseInt(companyLimit, 10) || 1,
       durationDays: parseInt(durationDays, 10),
+      hasTelegramBot,
+      hasExternalApi,
+      hasBuzonSol,
       features,
       isPopular,
       isActive,
@@ -175,7 +191,7 @@ export default function AdminPlanModal({ isOpen, onClose, plan, API_URL, authTok
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
             <div className="form-group-field">
               <label className="form-label">Precio (S/.)</label>
               <input 
@@ -189,7 +205,7 @@ export default function AdminPlanModal({ isOpen, onClose, plan, API_URL, authTok
             </div>
 
             <div className="form-group-field">
-              <label className="form-label">Límite Docs (-1=Ilimitado)</label>
+              <label className="form-label">Docs/Mes (-1=∞)</label>
               <input 
                 type="number" 
                 className="input-field" 
@@ -200,7 +216,7 @@ export default function AdminPlanModal({ isOpen, onClose, plan, API_URL, authTok
             </div>
 
             <div className="form-group-field">
-              <label className="form-label">Límite Usuarios</label>
+              <label className="form-label">Usuarios</label>
               <input 
                 type="number" 
                 min="1" 
@@ -209,6 +225,64 @@ export default function AdminPlanModal({ isOpen, onClose, plan, API_URL, authTok
                 onChange={(e) => setUserLimit(e.target.value)} 
                 required 
               />
+            </div>
+
+            <div className="form-group-field">
+              <label className="form-label">RUCs (-1=∞)</label>
+              <input 
+                type="number" 
+                className="input-field" 
+                value={companyLimit} 
+                onChange={(e) => setCompanyLimit(e.target.value)} 
+                title="-1 para permitir empresas ilimitadas (Multi-RUC)"
+                required 
+              />
+            </div>
+          </div>
+
+          {/* Módulos y Funcionalidades Incluidas */}
+          <div style={{ margin: '14px 0', padding: '12px 14px', background: 'var(--bg-subtle, rgba(0,0,0,0.02))', border: '1px solid var(--border-color, #e2e8f0)', borderRadius: '10px' }}>
+            <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
+              🎯 Módulos y Funcionalidades Activas en este Plan:
+            </span>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
+                <input type="checkbox" checked={true} disabled={true} />
+                <span>🌐 Facturación Web SUNAT (Base)</span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={hasTelegramBot} 
+                  onChange={(e) => setHasTelegramBot(e.target.checked)} 
+                />
+                <span style={{ fontWeight: hasTelegramBot ? 600 : 400, color: hasTelegramBot ? 'var(--primary-color)' : 'var(--text-muted)' }}>
+                  🤖 Bot de Telegram Oficial
+                </span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={hasExternalApi} 
+                  onChange={(e) => setHasExternalApi(e.target.checked)} 
+                />
+                <span style={{ fontWeight: hasExternalApi ? 600 : 400, color: hasExternalApi ? 'var(--primary-color)' : 'var(--text-muted)' }}>
+                  🔌 API Externa REST (POS/Odoo/Apps)
+                </span>
+              </label>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
+                <input 
+                  type="checkbox" 
+                  checked={hasBuzonSol} 
+                  onChange={(e) => setHasBuzonSol(e.target.checked)} 
+                />
+                <span style={{ fontWeight: hasBuzonSol ? 600 : 400, color: hasBuzonSol ? 'var(--primary-color)' : 'var(--text-muted)' }}>
+                  📬 Buzón SOL & Casilla SUNAFIL
+                </span>
+              </label>
             </div>
           </div>
 
