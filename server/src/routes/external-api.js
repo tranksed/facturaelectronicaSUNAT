@@ -1,22 +1,29 @@
 const express = require('express');
 const prisma = require('../db');
 const { extractKeysFromPfx, signXml } = require('../services/xml-signer');
-const { generateInvoiceXml } = require('../services/ubl-generator');
+const { generateInvoiceXml, generateCreditNoteXml } = require('../services/ubl-generator');
 const { compressXml, sendBillToSunat } = require('../services/sunat-client');
 const { generateInvoiceHtml } = require('../services/pdf-template');
 const { storeInvoiceFiles } = require('../services/storage-service');
 const { checkTenantQuota, incrementTenantDocCount } = require('../services/quota-service');
+const { consultarRuc, consultarDni } = require('../services/padron-service');
 
 const router = express.Router();
 
 /**
  * Middleware: Authenticate requests using API Key (sk_live_...)
+ * Supports:
+ * - Authorization: Bearer sk_live_...
+ * - Authorization: ApiKey sk_live_...
+ * - x-api-key: sk_live_...
+ * - Query parameter: ?api_key=sk_live_... (for direct browser file downloads/previews)
  */
 async function authenticateApiKey(req, res, next) {
   try {
     const authHeader = req.headers['authorization'];
     const headerKey = req.headers['x-api-key'];
-    let rawKey = headerKey;
+    const queryKey = req.query.api_key;
+    let rawKey = headerKey || queryKey;
 
     if (!rawKey && authHeader) {
       const parts = authHeader.split(' ');
@@ -53,7 +60,7 @@ async function authenticateApiKey(req, res, next) {
     if (apiKey.user.status !== 'ACTIVE') {
       return res.status(403).json({
         success: false,
-        error: 'La cuenta asociada a esta API Key se encuentra suspendida.'
+        error: 'La cuenta asociada a esta API Key se encuentra suspendida o inactiva.'
       });
     }
 
@@ -74,10 +81,10 @@ async function authenticateApiKey(req, res, next) {
 router.use(authenticateApiKey);
 
 /**
- * Helper to determine the next invoice ID scoped to company
+ * Helper to determine the next invoice/credit note ID scoped to company
  */
 async function getNextInvoiceId(tipoDoc, serieCustom, companyId) {
-  let prefix = tipoDoc === '01' ? 'F001' : (tipoDoc === '03' ? 'B001' : 'FC01');
+  let prefix = tipoDoc === '01' ? 'F001' : (tipoDoc === '03' ? 'B001' : (tipoDoc === '07' ? 'FC01' : 'FD01'));
   if (serieCustom) {
     prefix = serieCustom;
   }
@@ -101,25 +108,27 @@ async function getNextInvoiceId(tipoDoc, serieCustom, companyId) {
 }
 
 /**
- * Helper to resolve company for the API request
+ * Helper to resolve company for the API request (supports multi-company via headers, query or body)
  */
 async function resolveCompanyForApi(req) {
-  const companyId = req.headers['x-company-id'] || req.query.companyId;
-  const companyRuc = req.headers['x-company-ruc'] || req.query.ruc;
+  const companyId = req.headers['x-company-id'] || req.query.companyId || req.body?.companyId;
+  const companyRuc = req.headers['x-company-ruc'] || req.query.ruc || req.body?.ruc || req.body?.companyRuc;
 
   if (companyRuc) {
-    return await prisma.company.findFirst({
-      where: { userId: req.user.id, ruc: companyRuc }
+    const byRuc = await prisma.company.findFirst({
+      where: { userId: req.user.id, ruc: String(companyRuc).trim() }
     });
+    if (byRuc) return byRuc;
   }
 
   if (companyId) {
-    return await prisma.company.findFirst({
+    const byId = await prisma.company.findFirst({
       where: { userId: req.user.id, id: companyId }
     });
+    if (byId) return byId;
   }
 
-  // Fallback to default or first company of user
+  // Fallback to default company or first company created by user
   return await prisma.company.findFirst({
     where: { userId: req.user.id },
     orderBy: [{ isDefault: 'desc' }, { createdAt: 'asc' }]
@@ -127,7 +136,7 @@ async function resolveCompanyForApi(req) {
 }
 
 /**
- * Internal worker to process and emit a single invoice
+ * Internal worker to process and emit a single invoice or credit note
  */
 async function processEmitInvoice(company, invoiceData) {
   const {
@@ -142,7 +151,9 @@ async function processEmitInvoice(company, invoiceData) {
     moneda = 'PEN',
     formaPago = 'Contado',
     observaciones = '',
-    items = []
+    items = [],
+    docModificado,
+    motivo
   } = invoiceData;
 
   const finalClienteTipoDoc = String(clienteTipoDoc || cliente?.tipoDoc || (tipoDoc === '01' ? '6' : '1')).trim();
@@ -150,66 +161,107 @@ async function processEmitInvoice(company, invoiceData) {
   const finalClienteNombre = String(clienteNombre || cliente?.rznSocial || cliente?.nombre || '').trim();
   const finalClienteDireccion = String(clienteDireccion || cliente?.direccion || '').trim();
 
+  // Validate customer data
   if (!finalClienteDoc) {
-    throw new Error('Debe proporcionar el número de documento del cliente (numDoc).');
+    throw new Error('Debe proporcionar el número de documento del cliente (cliente.numDoc o clienteDoc).');
   }
   if (!finalClienteNombre) {
-    throw new Error('Debe proporcionar la razón social o nombre del cliente (rznSocial).');
+    throw new Error('Debe proporcionar la razón social o nombre del cliente (cliente.rznSocial o clienteNombre).');
   }
   if (!items || items.length === 0) {
-    throw new Error('Debe incluir al menos un ítem en la factura o boleta.');
+    throw new Error('Debe incluir al menos un ítem en la lista "items".');
   }
 
-  let totalVenta = 0;
-  items.forEach(item => {
-    const qty = parseFloat(item.cantidad) || 1;
-    const price = parseFloat(item.precioUnitario) || 0;
-    totalVenta += qty * price;
-  });
-
-  const totalGravado = Number((totalVenta / 1.18).toFixed(2));
-  const totalIgv = Number((totalVenta - totalGravado).toFixed(2));
-  const nextId = await getNextInvoiceId(tipoDoc, serie, company.id);
-  const fecha = new Date().toISOString().split('T')[0];
-
-  // 1. Generate UBL 2.1 XML
-  const rawXml = generateInvoiceXml({
-    company,
-    invoiceData: {
-      tipoDoc,
-      serie: nextId.split('-')[0],
-      correlativo: nextId.split('-')[1],
-      fechaEmision: fecha,
-      tipoOperacion,
-      moneda,
-      formaPago,
-      observaciones,
-      cliente: {
-        tipoDoc: finalClienteTipoDoc,
-        numDoc: finalClienteDoc,
-        rznSocial: finalClienteNombre,
-        direccion: finalClienteDireccion
-      },
-      totalGravado,
-      totalIgv,
-      totalVenta,
-      items
-    }
-  });
-
-  // 2. Sign XML with digital certificate
   if (!company.pfxCert) {
     throw new Error(`La empresa ${company.razonSocial} (RUC ${company.ruc}) no tiene Certificado Digital (.pfx) configurado.`);
   }
 
+  const nextId = await getNextInvoiceId(tipoDoc, serie, company.id);
+  const fecha = new Date().toISOString().split('T')[0];
+  const hora = new Date().toTimeString().split(' ')[0];
+
+  let rawXml;
+  let totalGravado = 0;
+  let totalIgv = 0;
+  let totalVenta = 0;
+
+  if (tipoDoc === '07') {
+    // -------------------------------------------------------------
+    // NOTA DE CRÉDITO (07)
+    // -------------------------------------------------------------
+    if (!docModificado || !docModificado.id) {
+      throw new Error('Para emitir una Nota de Crédito debe especificar "docModificado" con { id, tipoDoc }.');
+    }
+    const ncRes = generateCreditNoteXml({
+      emisor: {
+        ruc: company.ruc,
+        razonSocial: company.razonSocial,
+        direccion: company.direccion || 'LIMA - PERU'
+      },
+      cliente: {
+        tipoDoc: finalClienteTipoDoc,
+        nroDoc: finalClienteDoc,
+        nombre: finalClienteNombre
+      },
+      id: nextId,
+      fecha,
+      hora,
+      docModificado: {
+        id: docModificado.id,
+        tipoDoc: docModificado.tipoDoc || '01'
+      },
+      motivo: {
+        codigo: motivo?.codigo || '01',
+        descripcion: motivo?.descripcion || 'ANULACION DE LA OPERACION'
+      },
+      items
+    });
+    rawXml = ncRes.xml;
+    totalGravado = ncRes.totalGravado;
+    totalIgv = ncRes.totalIgv;
+    totalVenta = ncRes.totalVenta;
+  } else {
+    // -------------------------------------------------------------
+    // FACTURA (01) O BOLETA (03)
+    // -------------------------------------------------------------
+    const invRes = generateInvoiceXml({
+      emisor: {
+        ruc: company.ruc,
+        razonSocial: company.razonSocial,
+        nombreComercial: company.nombreComercial || company.razonSocial,
+        direccion: company.direccion || 'LIMA - PERU'
+      },
+      cliente: {
+        tipoDoc: finalClienteTipoDoc,
+        nroDoc: finalClienteDoc,
+        nombre: finalClienteNombre,
+        direccion: finalClienteDireccion
+      },
+      id: nextId,
+      tipoDoc,
+      fecha,
+      hora,
+      tipoOperacion,
+      moneda,
+      formaPago,
+      observaciones,
+      items
+    });
+    rawXml = invRes.xml;
+    totalGravado = invRes.totalGravado;
+    totalIgv = invRes.totalIgv;
+    totalVenta = invRes.totalVenta;
+  }
+
+  // Sign XML with digital certificate
   const { privateKeyPem, certificatePem } = extractKeysFromPfx(company.pfxCert, company.pfxPassword);
   const { signedXml, digestValue } = signXml(rawXml, privateKeyPem, certificatePem);
 
-  // 3. Compress XML into ZIP
+  // Compress XML into ZIP
   const fileName = `${company.ruc}-${tipoDoc}-${nextId}`;
   const xmlZipBuffer = compressXml(fileName, signedXml);
 
-  // 4. Send to SUNAT
+  // Transmit to SUNAT
   let result;
   try {
     result = await sendBillToSunat({
@@ -230,7 +282,7 @@ async function processEmitInvoice(company, invoiceData) {
     };
   }
 
-  // 5. Store invoice in database
+  // Store in Database
   const savedInvoice = await prisma.invoice.create({
     data: {
       id: nextId,
@@ -261,7 +313,18 @@ async function processEmitInvoice(company, invoiceData) {
     }
   });
 
-  // 6. Archive to File Server / S3
+  // If Credit Note was accepted, mark original document as ANULADO
+  if (tipoDoc === '07' && result.success && docModificado?.id) {
+    await prisma.invoice.updateMany({
+      where: { id: docModificado.id, companyId: company.id },
+      data: {
+        status: 'ANULADO',
+        sunatMessage: `Anulado mediante Nota de Crédito ${nextId}`
+      }
+    }).catch(() => {});
+  }
+
+  // Store PDF / Ticket files
   try {
     const a4Html = generateInvoiceHtml(savedInvoice, company, 'a4');
     const ticketHtml = generateInvoiceHtml(savedInvoice, company, 'ticket');
@@ -281,13 +344,19 @@ async function processEmitInvoice(company, invoiceData) {
   return {
     savedInvoice,
     result,
-    nextId
+    nextId,
+    digestValue,
+    xmlZipBuffer
   };
 }
 
+// =========================================================================
+// API ENDPOINTS
+// =========================================================================
+
 /**
  * GET /api/v1/external/status
- * Verifies API Key and returns tenant status & remaining doc quota
+ * Verifies API Key, tenant status, remaining quota, and company info
  */
 router.get('/status', async (req, res) => {
   try {
@@ -296,8 +365,8 @@ router.get('/status', async (req, res) => {
 
     res.json({
       success: true,
-      service: 'APISUNAT PRO External REST API',
-      version: 'v1.0',
+      service: 'API PROVEEDOR FACTURACIÓN MULTIEMPRESA',
+      version: 'v1.2',
       tenant: {
         id: req.user.id,
         name: req.user.name,
@@ -324,8 +393,88 @@ router.get('/status', async (req, res) => {
 });
 
 /**
+ * GET /api/v1/external/companies
+ * Returns all active companies under the authenticated tenant (Multiempresa)
+ */
+router.get('/companies', async (req, res) => {
+  try {
+    const companies = await prisma.company.findMany({
+      where: { userId: req.user.id },
+      select: {
+        id: true,
+        ruc: true,
+        razonSocial: true,
+        nombreComercial: true,
+        direccion: true,
+        telefono: true,
+        email: true,
+        isProduction: true,
+        isDefault: true,
+        pfxCert: true,
+        createdAt: true
+      },
+      orderBy: [{ isDefault: 'desc' }, { razonSocial: 'asc' }]
+    });
+
+    res.json({
+      success: true,
+      total: companies.length,
+      companies: companies.map(c => ({
+        id: c.id,
+        ruc: c.ruc,
+        razonSocial: c.razonSocial,
+        nombreComercial: c.nombreComercial || c.razonSocial,
+        direccion: c.direccion,
+        telefono: c.telefono,
+        email: c.email,
+        isProduction: c.isProduction,
+        isDefault: c.isDefault,
+        hasCertificate: !!c.pfxCert,
+        createdAt: c.createdAt
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/external/consultas/ruc/:ruc
+ * Query SUNAT padrón for company details (Razón Social, Dirección, Estado, Condición)
+ */
+router.get('/consultas/ruc/:ruc', async (req, res) => {
+  try {
+    const { ruc } = req.params;
+    const data = await consultarRuc(ruc);
+    res.json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/external/consultas/dni/:dni
+ * Query RENIEC padrón for customer full name
+ */
+router.get('/consultas/dni/:dni', async (req, res) => {
+  try {
+    const { dni } = req.params;
+    const data = await consultarDni(dni);
+    res.json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    res.status(400).json({ success: false, error: error.message });
+  }
+});
+
+/**
  * POST /api/v1/external/invoices
- * Emits a single Invoice (01) or Boleta (03) via external API
+ * Emits a single Invoice (01), Boleta (03), or Credit Note (07)
  */
 router.post('/invoices', async (req, res) => {
   try {
@@ -338,34 +487,52 @@ router.post('/invoices', async (req, res) => {
       });
     }
 
-    // 2. Resolve target company
+    // 2. Resolve target company (Multiempresa)
     const company = await resolveCompanyForApi(req);
     if (!company) {
       return res.status(400).json({
         success: false,
-        error: 'No se encontró ninguna empresa activa configurada para este usuario.'
+        error: 'No se encontró ninguna empresa configurada para este usuario. Registre al menos una empresa con RUC y certificado en el panel.'
       });
     }
 
     // 3. Process and emit
-    const { savedInvoice, result, nextId } = await processEmitInvoice(company, req.body);
+    const { savedInvoice, result, nextId, digestValue, xmlZipBuffer } = await processEmitInvoice(company, req.body);
 
     // 4. Increment document quota
     await incrementTenantDocCount(req.user.id);
 
-    res.json({
+    const host = `${req.protocol}://${req.get('host')}`;
+
+    const responsePayload = {
       success: result.success,
       id: nextId,
+      tipoDoc: savedInvoice.tipoDoc,
+      serie: savedInvoice.serie,
+      correlativo: savedInvoice.correlativo,
       status: savedInvoice.status,
       sunatResponseCode: result.responseCode,
       sunatMessage: result.message,
+      digestValue,
+      company: {
+        ruc: company.ruc,
+        razonSocial: company.razonSocial
+      },
       links: {
-        xmlUrl: `/api/documents/${nextId}/xml`,
-        cdrUrl: result.cdrZipBuffer ? `/api/documents/${nextId}/cdr` : null,
-        pdfA4Url: `/api/documents/${nextId}/pdf/a4`,
-        pdfTicketUrl: `/api/documents/${nextId}/pdf/ticket`
+        pdfA4Url: `${host}/receipt/${nextId}?format=a4`,
+        pdfTicketUrl: `${host}/receipt/${nextId}?format=ticket`,
+        xmlUrl: `${host}/api/v1/external/invoices/${nextId}/xml`,
+        cdrUrl: result.cdrZipBuffer ? `${host}/api/v1/external/invoices/${nextId}/cdr` : null
       }
-    });
+    };
+
+    // If client requested base64 payload (ideal for POS & Mobile Apps)
+    if (req.body.includeBase64) {
+      responsePayload.xmlBase64 = xmlZipBuffer.toString('base64');
+      responsePayload.cdrBase64 = result.cdrZipBuffer ? result.cdrZipBuffer.toString('base64') : null;
+    }
+
+    res.json(responsePayload);
   } catch (error) {
     res.status(400).json({ success: false, error: error.message });
   }
@@ -394,13 +561,13 @@ router.post('/invoices/batch', async (req, res) => {
       });
     }
 
+    const host = `${req.protocol}://${req.get('host')}`;
     const results = [];
     let successfulCount = 0;
     let failedCount = 0;
 
     for (let i = 0; i < invoices.length; i++) {
       const invData = invoices[i];
-      // Check quota before each emission in the batch
       const quota = await checkTenantQuota(req.user.id);
       if (!quota.allowed) {
         results.push({
@@ -413,7 +580,7 @@ router.post('/invoices/batch', async (req, res) => {
       }
 
       try {
-        const { savedInvoice, result, nextId } = await processEmitInvoice(company, invData);
+        const { savedInvoice, result, nextId, digestValue } = await processEmitInvoice(company, invData);
         await incrementTenantDocCount(req.user.id);
         if (result.success) successfulCount++; else failedCount++;
 
@@ -424,11 +591,12 @@ router.post('/invoices/batch', async (req, res) => {
           status: savedInvoice.status,
           sunatResponseCode: result.responseCode,
           sunatMessage: result.message,
+          digestValue,
           links: {
-            pdfA4Url: `/api/documents/${nextId}/pdf/a4`,
-            pdfTicketUrl: `/api/documents/${nextId}/pdf/ticket`,
-            xmlUrl: `/api/documents/${nextId}/xml`,
-            cdrUrl: result.cdrZipBuffer ? `/api/documents/${nextId}/cdr` : null
+            pdfA4Url: `${host}/receipt/${nextId}?format=a4`,
+            pdfTicketUrl: `${host}/receipt/${nextId}?format=ticket`,
+            xmlUrl: `${host}/api/v1/external/invoices/${nextId}/xml`,
+            cdrUrl: result.cdrZipBuffer ? `${host}/api/v1/external/invoices/${nextId}/cdr` : null
           }
         });
       } catch (err) {
@@ -455,7 +623,7 @@ router.post('/invoices/batch', async (req, res) => {
 
 /**
  * GET /api/v1/external/invoices/:id
- * Retrieve details and files for an invoice by ID
+ * Retrieve details and file URLs for an invoice by ID
  */
 router.get('/invoices/:id', async (req, res) => {
   try {
@@ -466,12 +634,15 @@ router.get('/invoices/:id', async (req, res) => {
       where: {
         id,
         companyId: company ? company.id : undefined
-      }
+      },
+      include: { company: true }
     });
 
     if (!invoice) {
       return res.status(404).json({ success: false, error: 'Comprobante no encontrado.' });
     }
+
+    const host = `${req.protocol}://${req.get('host')}`;
 
     res.json({
       success: true,
@@ -482,18 +653,177 @@ router.get('/invoices/:id', async (req, res) => {
         correlativo: invoice.correlativo,
         clienteDoc: invoice.clienteDoc,
         clienteNombre: invoice.clienteNombre,
+        clienteDireccion: invoice.clienteDireccion,
+        montoGravado: invoice.montoGravado,
+        montoIgv: invoice.montoIgv,
         montoTotal: invoice.montoTotal,
         moneda: invoice.moneda,
         status: invoice.status,
         sunatResponseCode: invoice.sunatResponseCode,
         sunatMessage: invoice.sunatMessage,
         createdAt: invoice.createdAt,
+        company: {
+          ruc: invoice.company?.ruc,
+          razonSocial: invoice.company?.razonSocial
+        },
         links: {
-          xmlUrl: `/api/documents/${invoice.id}/xml`,
-          cdrUrl: invoice.cdrZip ? `/api/documents/${invoice.id}/cdr` : null,
-          pdfA4Url: `/api/documents/${invoice.id}/pdf/a4`,
-          pdfTicketUrl: `/api/documents/${invoice.id}/pdf/ticket`
+          pdfA4Url: `${host}/receipt/${invoice.id}?format=a4`,
+          pdfTicketUrl: `${host}/receipt/${invoice.id}?format=ticket`,
+          xmlUrl: `${host}/api/v1/external/invoices/${invoice.id}/xml`,
+          cdrUrl: invoice.cdrZip ? `${host}/api/v1/external/invoices/${invoice.id}/cdr` : null
         }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/external/invoices/:id/pdf
+ * Direct stream of printable invoice HTML (A4 or Ticket 80mm)
+ */
+router.get('/invoices/:id/pdf', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const format = req.query.format || 'a4';
+    const invoice = await prisma.invoice.findUnique({
+      where: { id },
+      include: { company: true }
+    });
+
+    if (!invoice) {
+      return res.status(404).send('<h1>Comprobante no encontrado</h1>');
+    }
+
+    const company = invoice.company || await resolveCompanyForApi(req);
+    const html = generateInvoiceHtml(invoice, company, format);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (error) {
+    res.status(500).send('<h1>Error al generar representación impresa</h1><p>' + error.message + '</p>');
+  }
+});
+
+/**
+ * GET /api/v1/external/invoices/:id/xml
+ * Direct download of signed UBL 2.1 XML
+ */
+router.get('/invoices/:id/xml', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const invoice = await prisma.invoice.findUnique({
+      where: { id },
+      include: { company: true }
+    });
+
+    if (!invoice || !invoice.xmlSigned) {
+      return res.status(404).json({ success: false, error: 'XML no disponible para este comprobante.' });
+    }
+
+    const ruc = invoice.company?.ruc || 'SUNAT';
+    res.setHeader('Content-Type', 'text/xml; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=${ruc}-${invoice.tipoDoc}-${invoice.id}.xml`);
+    res.send(invoice.xmlSigned);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/v1/external/invoices/:id/cdr
+ * Direct download of SUNAT CDR ZIP file
+ */
+router.get('/invoices/:id/cdr', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const invoice = await prisma.invoice.findUnique({
+      where: { id },
+      include: { company: true }
+    });
+
+    if (!invoice || !invoice.cdrZip) {
+      return res.status(404).json({ success: false, error: 'Constancia de recepción (CDR) no disponible.' });
+    }
+
+    const ruc = invoice.company?.ruc || 'SUNAT';
+    res.setHeader('Content-Type', 'application/zip');
+    res.setHeader('Content-Disposition', `attachment; filename=R-${ruc}-${invoice.tipoDoc}-${invoice.id}.zip`);
+    res.send(invoice.cdrZip);
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+/**
+ * POST /api/v1/external/invoices/:id/void
+ * Issues a Nota de Crédito to annul an existing invoice
+ */
+router.post('/invoices/:id/void', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { motivo = 'ANULACION DE LA OPERACION', codigoMotivo = '01' } = req.body;
+
+    const invoice = await prisma.invoice.findUnique({
+      where: { id },
+      include: { company: true }
+    });
+
+    if (!invoice) {
+      return res.status(404).json({ success: false, error: 'Comprobante no encontrado.' });
+    }
+
+    if (invoice.status === 'ANULADO') {
+      return res.status(400).json({ success: false, error: 'El comprobante ya fue anulado previamente.' });
+    }
+
+    const company = invoice.company || await resolveCompanyForApi(req);
+    if (!company) {
+      return res.status(400).json({ success: false, error: 'Empresa no encontrada.' });
+    }
+
+    let parsedItems = [];
+    try {
+      parsedItems = JSON.parse(invoice.itemsJson || '[]');
+    } catch {
+      parsedItems = [{ descripcion: 'Anulación de comprobante', cantidad: 1, precioUnitario: invoice.montoTotal }];
+    }
+
+    // Process Nota de Crédito emission
+    const ncData = {
+      tipoDoc: '07',
+      clienteTipoDoc: invoice.clienteTipoDoc,
+      clienteDoc: invoice.clienteDoc,
+      clienteNombre: invoice.clienteNombre,
+      clienteDireccion: invoice.clienteDireccion,
+      docModificado: {
+        id: invoice.id,
+        tipoDoc: invoice.tipoDoc
+      },
+      motivo: {
+        codigo: codigoMotivo,
+        descripcion: motivo
+      },
+      items: parsedItems
+    };
+
+    const { savedInvoice: savedNC, result, nextId } = await processEmitInvoice(company, ncData);
+    await incrementTenantDocCount(req.user.id);
+
+    const host = `${req.protocol}://${req.get('host')}`;
+
+    res.json({
+      success: result.success,
+      message: result.message,
+      notaCreditoId: nextId,
+      originalInvoiceId: invoice.id,
+      status: savedNC.status,
+      sunatResponseCode: result.responseCode,
+      links: {
+        pdfA4Url: `${host}/receipt/${nextId}?format=a4`,
+        pdfTicketUrl: `${host}/receipt/${nextId}?format=ticket`,
+        xmlUrl: `${host}/api/v1/external/invoices/${nextId}/xml`,
+        cdrUrl: result.cdrZipBuffer ? `${host}/api/v1/external/invoices/${nextId}/cdr` : null
       }
     });
   } catch (error) {
