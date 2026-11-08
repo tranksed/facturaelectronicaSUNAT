@@ -16,6 +16,7 @@ import {
   IconInvoice,
   IconFileText,
   IconLock,
+  IconZap,
   IconBuilding,
   IconShield,
   IconSearch,
