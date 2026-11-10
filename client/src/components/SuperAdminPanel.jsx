@@ -436,6 +436,19 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
     }
   };
 
+  const filteredUsers = (users || []).filter(u => {
+    if (userStatusFilter !== 'ALL' && u.status !== userStatusFilter) return false;
+    if (userRoleFilter !== 'ALL' && u.role !== userRoleFilter) return false;
+    if (!userSearchQuery.trim()) return true;
+    const q = userSearchQuery.toLowerCase().trim();
+    const nameMatch = (u.name || '').toLowerCase().includes(q);
+    const emailMatch = (u.email || '').toLowerCase().includes(q);
+    const companyMatch = (u.companies || []).some(c => 
+      (c.ruc || '').includes(q) || (c.razonSocial || '').toLowerCase().includes(q)
+    );
+    return nameMatch || emailMatch || companyMatch;
+  });
+
   return (
     <div className="superadmin-panel-container animate-fade-in">
       {/* Alert banner */}
