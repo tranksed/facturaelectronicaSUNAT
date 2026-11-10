@@ -85,6 +85,7 @@ export default function App() {
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [isTelegramModalOpen, setIsTelegramModalOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const [subscriptionInfo, setSubscriptionInfo] = useState(null);
 
   const fetchSubscriptionInfo = async () => {
@@ -665,17 +666,27 @@ export default function App() {
       />
 
       {/* Sidebar Navigation */}
-      <aside className="sidebar">
+      <aside className={`sidebar ${isMobileNavOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-top">
-          <div className="logo-container" onClick={() => setActiveTab('dashboard')}>
-            {branding?.logoUrl ? (
-              <img src={branding.logoUrl} alt="Logo" style={{ maxHeight: '36px', maxWidth: '120px' }} />
-            ) : (
-              <div className="logo-icon" style={{ background: branding?.primaryColor || '#2563eb' }}>
-                {(branding?.platformName || 'SUNAT').substring(0, 1)}
-              </div>
-            )}
-            <div className="logo-text">{branding?.platformName || 'APISUNAT'}</div>
+          <div className="sidebar-header-row">
+            <div className="logo-container" onClick={() => { setActiveTab('dashboard'); setIsMobileNavOpen(false); }}>
+              {branding?.logoUrl ? (
+                <img src={branding.logoUrl} alt="Logo" style={{ maxHeight: '36px', maxWidth: '120px' }} />
+              ) : (
+                <div className="logo-icon" style={{ background: branding?.primaryColor || '#2563eb' }}>
+                  {(branding?.platformName || 'SUNAT').substring(0, 1)}
+                </div>
+              )}
+              <div className="logo-text">{branding?.platformName || 'APISUNAT'}</div>
+            </div>
+            <button 
+              type="button" 
+              className="sidebar-close-btn" 
+              onClick={() => setIsMobileNavOpen(false)}
+              aria-label="Cerrar menú"
+            >
+              ✕
+            </button>
           </div>
 
           <nav>
@@ -683,7 +694,7 @@ export default function App() {
               <li>
                 <button 
                   className={`nav-item-btn ${activeTab === 'dashboard' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('dashboard')}
+                  onClick={() => { setActiveTab('dashboard'); setIsMobileNavOpen(false); }}
                 >
                   <span className="nav-item-icon"><IconDashboard size={18} /></span>
                   <span>Dashboard</span>
@@ -692,7 +703,7 @@ export default function App() {
               <li>
                 <button 
                   className={`nav-item-btn ${activeTab === 'emision' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('emision')}
+                  onClick={() => { setActiveTab('emision'); setIsMobileNavOpen(false); }}
                 >
                   <span className="nav-item-icon"><IconInvoice size={18} /></span>
                   <span>Emitir Comprobante</span>
@@ -701,7 +712,7 @@ export default function App() {
               <li>
                 <button 
                   className={`nav-item-btn ${activeTab === 'invoices' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('invoices')}
+                  onClick={() => { setActiveTab('invoices'); setIsMobileNavOpen(false); }}
                 >
                   <span className="nav-item-icon"><IconFileText size={18} /></span>
                   <span>Comprobantes</span>
@@ -710,7 +721,7 @@ export default function App() {
               <li>
                 <button 
                   className={`nav-item-btn ${activeTab === 'buzon-sol' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('buzon-sol')}
+                  onClick={() => { setActiveTab('buzon-sol'); setIsMobileNavOpen(false); }}
                 >
                   <span className="nav-item-icon"><IconMail size={18} /></span>
                   <span>Buzón SOL (SUNAT)</span>
@@ -719,7 +730,7 @@ export default function App() {
               <li>
                 <button 
                   className={`nav-item-btn ${activeTab === 'sunafil' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('sunafil')}
+                  onClick={() => { setActiveTab('sunafil'); setIsMobileNavOpen(false); }}
                 >
                   <span className="nav-item-icon"><IconBell size={18} /></span>
                   <span>Casilla SUNAFIL</span>
@@ -728,7 +739,7 @@ export default function App() {
               <li>
                 <button 
                   className={`nav-item-btn ${activeTab === 'settings' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('settings')}
+                  onClick={() => { setActiveTab('settings'); setIsMobileNavOpen(false); }}
                 >
                   <span className="nav-item-icon"><IconBuilding size={18} /></span>
                   <span>Mi Empresa</span>
@@ -737,7 +748,7 @@ export default function App() {
               <li>
                 <button 
                   className={`nav-item-btn ${activeTab === 'team' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('team')}
+                  onClick={() => { setActiveTab('team'); setIsMobileNavOpen(false); }}
                 >
                   <span className="nav-item-icon"><IconUsers size={18} /></span>
                   <span>Mi Equipo</span>
@@ -746,7 +757,7 @@ export default function App() {
               <li>
                 <button 
                   className={`nav-item-btn ${activeTab === 'api-docs' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('api-docs')}
+                  onClick={() => { setActiveTab('api-docs'); setIsMobileNavOpen(false); }}
                 >
                   <span className="nav-item-icon"><IconCode size={18} /></span>
                   <span>API & WHMCS</span>
@@ -755,7 +766,7 @@ export default function App() {
               <li>
                 <button 
                   className="nav-item-btn"
-                  onClick={() => setIsPlanModalOpen(true)}
+                  onClick={() => { setIsPlanModalOpen(true); setIsMobileNavOpen(false); }}
                   style={{ color: '#f59e0b' }}
                 >
                   <span className="nav-item-icon"><IconCrown size={18} /></span>
@@ -765,7 +776,7 @@ export default function App() {
               <li>
                 <button 
                   className={`nav-item-btn ${activeTab === 'guia-sunat' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('guia-sunat')}
+                  onClick={() => { setActiveTab('guia-sunat'); setIsMobileNavOpen(false); }}
                   style={{ borderLeft: '3px solid #10b981' }}
                 >
                   <span className="nav-item-icon"><IconBookOpen size={18} /></span>
@@ -776,7 +787,7 @@ export default function App() {
                 <li>
                   <button 
                     className={`nav-item-btn ${activeTab === 'superadmin' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('superadmin')}
+                    onClick={() => { setActiveTab('superadmin'); setIsMobileNavOpen(false); }}
                     style={{ borderLeft: '3px solid #f43f5e' }}
                   >
                     <span className="nav-item-icon"><IconShield size={18} /></span>
@@ -803,14 +814,34 @@ export default function App() {
         </div>
       </aside>
 
+      {/* Backdrop for Mobile Sidebar Drawer */}
+      {isMobileNavOpen && (
+        <div 
+          className="sidebar-backdrop active" 
+          onClick={() => setIsMobileNavOpen(false)}
+          aria-hidden="true" 
+        />
+      )}
+
       {/* Main Content Area */}
       <main className="main-content-panel">
         {/* Top Header Bar */}
         <header className="top-header-bar">
           <div className="top-header-left">
-            <div className="header-active-company-pill">
+            <button
+              type="button"
+              className="mobile-menu-btn"
+              onClick={() => setIsMobileNavOpen(true)}
+              aria-label="Abrir menú"
+              title="Abrir menú de navegación"
+            >
+              <span className="hamburger-bar"></span>
+              <span className="hamburger-bar"></span>
+              <span className="hamburger-bar"></span>
+            </button>
+            <div className="header-active-company-pill" title={activeCompany?.razonSocial}>
               <IconBuilding size={16} />
-              <span>{activeCompany?.razonSocial || 'Sin Empresa Seleccionada'}</span>
+              <span className="company-pill-text">{activeCompany?.razonSocial || 'Sin Empresa Seleccionada'}</span>
             </div>
           </div>
 
@@ -1835,6 +1866,56 @@ export default function App() {
             </div>
           )}
         </div>
+
+        {/* Mobile Bottom Navigation Bar */}
+        <nav className="mobile-bottom-nav">
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('dashboard'); setIsMobileNavOpen(false); }}
+          >
+            <IconDashboard size={19} />
+            <span>Inicio</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${activeTab === 'emision' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('emision'); setIsMobileNavOpen(false); }}
+          >
+            <div className="bottom-nav-action-bubble">
+              <IconInvoice size={20} />
+            </div>
+            <span>Emitir</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${activeTab === 'invoices' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('invoices'); setIsMobileNavOpen(false); }}
+          >
+            <IconFileText size={19} />
+            <span>Docs</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${activeTab === 'api-docs' ? 'active' : ''}`}
+            onClick={() => { setActiveTab('api-docs'); setIsMobileNavOpen(false); }}
+          >
+            <IconTelegram size={19} />
+            <span>Bot/API</span>
+          </button>
+
+          <button
+            type="button"
+            className={`mobile-bottom-nav-item ${isMobileNavOpen ? 'active' : ''}`}
+            onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+          >
+            <span style={{ fontSize: '18px', fontWeight: 800, lineHeight: 1 }}>☰</span>
+            <span>Más</span>
+          </button>
+        </nav>
 
       </main>
     </div>
