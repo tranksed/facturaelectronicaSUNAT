@@ -27,6 +27,8 @@ import {
   IconDollar,
   IconCopy,
   IconExternalLink,
+  IconSearch,
+  IconUsers,
   LoaderCircleIcon
 } from './Icons';
 
@@ -39,6 +41,11 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
   const [isPlanModalOpen, setIsPlanModalOpen] = useState(false);
   const [selectedUserForPlan, setSelectedUserForPlan] = useState(null);
   const [isUserPlanModalOpen, setIsUserPlanModalOpen] = useState(false);
+
+  // Search & Filters for Users
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userStatusFilter, setUserStatusFilter] = useState('ALL'); // 'ALL' | 'ACTIVE' | 'SUSPENDED'
+  const [userRoleFilter, setUserRoleFilter] = useState('ALL'); // 'ALL' | 'TENANT' | 'SUPERADMIN'
 
   // Gateways configuration
   const [gatewaysForm, setGatewaysForm] = useState({
@@ -469,22 +476,45 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
       {stats && (
         <div className="metrics-grid">
           <div className="metric-card">
-            <span className="metric-title">Clientes / Cuentas</span>
+            <div className="metric-card-header">
+              <span className="metric-title">Clientes / Cuentas</span>
+              <div className="metric-icon-box primary">
+                <IconUsers size={22} />
+              </div>
+            </div>
             <span className="metric-value">{stats.totalUsers}</span>
             <span className="metric-desc">Inquilinos registrados en la plataforma</span>
           </div>
+
           <div className="metric-card">
-            <span className="metric-title">Total Empresas RUC</span>
+            <div className="metric-card-header">
+              <span className="metric-title">Total Empresas RUC</span>
+              <div className="metric-icon-box" style={{ background: 'rgba(6, 182, 212, 0.12)', color: '#06b6d4' }}>
+                <IconBuilding size={22} />
+              </div>
+            </div>
             <span className="metric-value">{stats.totalCompanies}</span>
             <span className="metric-desc">Razón Social y certificados activos</span>
           </div>
+
           <div className="metric-card success">
-            <span className="metric-title">Comprobantes Aceptados</span>
+            <div className="metric-card-header">
+              <span className="metric-title">Comprobantes Aceptados</span>
+              <div className="metric-icon-box" style={{ background: 'rgba(16, 185, 129, 0.12)', color: '#10b981' }}>
+                <IconCheck size={22} />
+              </div>
+            </div>
             <span className="metric-value">{stats.acceptedInvoices}</span>
             <span className="metric-desc">Validados por SUNAT (CDR Ok)</span>
           </div>
+
           <div className="metric-card">
-            <span className="metric-title">Volumen Total Facturado</span>
+            <div className="metric-card-header">
+              <span className="metric-title">Volumen Total Facturado</span>
+              <div className="metric-icon-box" style={{ background: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b' }}>
+                <IconDollar size={22} />
+              </div>
+            </div>
             <span className="metric-value">S/. {Number(stats.totalBilled || 0).toLocaleString('es-PE', { minimumFractionDigits: 2 })}</span>
             <span className="metric-desc">Total transaccionado en el sistema</span>
           </div>
@@ -498,203 +528,452 @@ export default function SuperAdminPanel({ API_URL, authToken, onBrandingUpdated 
           onClick={() => setActiveAdminSubTab('users')}
         >
           <IconUser size={15} />
-          <span>Gestión de Cuentas y Empresas ({users.length})</span>
+          <span>Gestión de Cuentas</span>
+          <span className="admin-tab-badge">{users.length}</span>
         </button>
         <button 
           className={`admin-tab-btn ${activeAdminSubTab === 'plans' ? 'active' : ''}`}
           onClick={() => setActiveAdminSubTab('plans')}
         >
           <IconCrown size={15} />
-          <span>Planes y Paquetes de Cobro ({plans.length})</span>
+          <span>Planes y Paquetes</span>
+          <span className="admin-tab-badge">{plans.length}</span>
         </button>
         <button 
           className={`admin-tab-btn ${activeAdminSubTab === 'gateways' ? 'active' : ''}`}
           onClick={() => setActiveAdminSubTab('gateways')}
         >
           <IconCreditCard size={15} />
-          <span>Pasarelas de Pago & Suscripciones</span>
+          <span>Pasarelas & Cobros</span>
         </button>
         <button 
           className={`admin-tab-btn ${activeAdminSubTab === 'whitelabel' ? 'active' : ''}`}
           onClick={() => setActiveAdminSubTab('whitelabel')}
         >
           <IconSettings size={15} />
-          <span>Personalización de Marca Blanca</span>
+          <span>Marca Blanca</span>
         </button>
         <button 
           className={`admin-tab-btn ${activeAdminSubTab === 'storage' ? 'active' : ''}`}
           onClick={() => setActiveAdminSubTab('storage')}
         >
           <IconServer size={15} />
-          <span>Almacenamiento (File Server / S3 / VPS)</span>
+          <span>Almacenamiento (S3/VPS)</span>
         </button>
       </div>
 
       {/* TAB 1: GESTIÓN DE CUENTAS */}
       {activeAdminSubTab === 'users' && (
         <div className="glass-card animate-fade-in" style={{ marginTop: '20px', padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '18px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 className="card-title" style={{ margin: 0 }}>Cuentas de Usuarios y Empresas Vinculadas</h2>
-            <span className="field-hint">Administra el acceso y visualiza las empresas asociadas a cada cliente.</span>
+          {/* Header */}
+          <div style={{ padding: '18px 20px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
+            <div>
+              <h2 className="card-title" style={{ margin: 0, fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <IconUsers size={20} style={{ color: 'var(--primary)' }} />
+                <span>Cuentas de Usuarios y Empresas Vinculadas</span>
+              </h2>
+              <span className="field-hint">Administra el acceso, planes y visualiza las empresas asociadas a cada cliente.</span>
+            </div>
+            <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              Mostrando: <strong>{filteredUsers.length}</strong> de {users.length} cuentas
+            </div>
           </div>
 
-          <div className="table-responsive" style={{ border: 'none' }}>
-            <table className="custom-table admin-users-table">
-              <thead>
-                <tr>
-                  <th>Usuario</th>
-                  <th>Rol</th>
-                  <th>Empresas Registradas (RUCs)</th>
-                  <th>Plan Comercial</th>
-                  <th style={{ textAlign: 'center' }}>Comprobantes</th>
-                  <th style={{ textAlign: 'center' }}>Estado</th>
-                  <th style={{ textAlign: 'center' }}>Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map(u => (
-                  <tr key={u.id} style={{ opacity: u.status === 'SUSPENDED' ? 0.6 : 1 }}>
-                    <td>
-                      <div>
-                        <strong style={{ color: 'var(--text-primary)' }}>{u.name || 'Sin Nombre'}</strong>
-                        <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>{u.email}</div>
-                        <small style={{ color: 'var(--text-muted)' }}>Registrado: {new Date(u.createdAt).toLocaleDateString()}</small>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`user-role-tag ${u.role === 'SUPERADMIN' ? 'superadmin' : 'tenant'}`}>
-                        {u.role === 'SUPERADMIN' ? 'Super Admin' : 'Inquilino (Cliente)'}
-                      </span>
-                    </td>
-                    <td>
-                      {u.companies && u.companies.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                          {u.companies.map(c => (
-                            <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px' }}>
-                              <IconBuilding size={13} />
-                              <strong>{c.ruc}</strong> - {c.razonSocial}
-                              {c.hasCert && (
-                                <span className={`status-pill ${c.isProduction ? 'prod' : 'beta'}`} style={{ fontSize: '10px', padding: '1px 6px' }}>
-                                  {c.isProduction ? 'Prod' : 'Beta'}
+          {/* Search & Filter Toolbar */}
+          <div className="admin-users-toolbar">
+            <div className="admin-search-box">
+              <span className="admin-search-icon">
+                <IconSearch size={15} />
+              </span>
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Buscar por usuario, email, RUC o razón social..."
+                value={userSearchQuery}
+                onChange={(e) => setUserSearchQuery(e.target.value)}
+              />
+              {userSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setUserSearchQuery('')}
+                  style={{
+                    position: 'absolute',
+                    right: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    fontSize: '14px'
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <div className="admin-filter-chips">
+              <button
+                type="button"
+                className={`admin-filter-chip ${userStatusFilter === 'ALL' ? 'active' : ''}`}
+                onClick={() => setUserStatusFilter('ALL')}
+              >
+                Todos ({users.length})
+              </button>
+              <button
+                type="button"
+                className={`admin-filter-chip ${userStatusFilter === 'ACTIVE' ? 'active' : ''}`}
+                onClick={() => setUserStatusFilter('ACTIVE')}
+              >
+                Activos ({users.filter(u => u.status === 'ACTIVE').length})
+              </button>
+              <button
+                type="button"
+                className={`admin-filter-chip ${userStatusFilter === 'SUSPENDED' ? 'active' : ''}`}
+                onClick={() => setUserStatusFilter('SUSPENDED')}
+              >
+                Suspendidos ({users.filter(u => u.status === 'SUSPENDED').length})
+              </button>
+            </div>
+          </div>
+
+          {/* DESKTOP TABLE VIEW (> 768px) */}
+          <div className="admin-users-table-view">
+            <div className="admin-table-wrapper">
+              <table className="custom-table admin-users-table">
+                <thead>
+                  <tr>
+                    <th>Usuario</th>
+                    <th style={{ textAlign: 'center' }}>Rol</th>
+                    <th>Empresas Registradas (RUCs)</th>
+                    <th>Plan Comercial</th>
+                    <th style={{ textAlign: 'center' }}>Docs</th>
+                    <th style={{ textAlign: 'center' }}>Estado</th>
+                    <th style={{ textAlign: 'center' }}>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsers.length > 0 ? (
+                    filteredUsers.map(u => {
+                      const userInitial = (u.name || u.email || 'U').charAt(0).toUpperCase();
+                      const docLimit = u.plan?.docLimit;
+                      const docCount = u.docsIssuedCount || 0;
+                      const isExpired = u.planExpiresAt && new Date() > new Date(u.planExpiresAt);
+
+                      return (
+                        <tr key={u.id} style={{ opacity: u.status === 'SUSPENDED' ? 0.65 : 1 }}>
+                          <td>
+                            <div className="admin-user-cell">
+                              <div className="admin-user-avatar">{userInitial}</div>
+                              <div className="admin-user-info">
+                                <span className="admin-user-name">{u.name || 'Sin Nombre'}</span>
+                                <span className="admin-user-email" title={u.email}>{u.email}</span>
+                                <span className="admin-user-date">
+                                  Registrado: {new Date(u.createdAt).toLocaleDateString('es-PE')}
                                 </span>
+                              </div>
+                            </div>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span className={`user-role-tag ${u.role === 'SUPERADMIN' ? 'superadmin' : 'tenant'}`}>
+                              {u.role === 'SUPERADMIN' ? 'Super Admin' : 'Inquilino'}
+                            </span>
+                          </td>
+                          <td>
+                            {u.companies && u.companies.length > 0 ? (
+                              <div className="admin-companies-list">
+                                {u.companies.map(c => (
+                                  <div key={c.id} className="admin-company-card">
+                                    <div className="admin-company-header">
+                                      <span className="admin-company-ruc">
+                                        <IconBuilding size={12} /> {c.ruc}
+                                      </span>
+                                      {c.hasCert && (
+                                        <span className={`status-pill ${c.isProduction ? 'prod' : 'beta'}`} style={{ fontSize: '9.5px', padding: '1px 6px' }}>
+                                          {c.isProduction ? 'Prod' : 'Beta'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="admin-company-name" title={c.razonSocial}>
+                                      {c.razonSocial}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="admin-empty-pill">Sin empresas aún</span>
+                            )}
+                          </td>
+                          <td>
+                            <div className="admin-plan-badge-box">
+                              <span className={`admin-plan-tag ${u.plan && u.plan.price > 0 ? 'paid' : ''}`}>
+                                <IconCrown size={12} />
+                                <span>{u.plan ? u.plan.name : 'Plan Gratuito'}</span>
+                              </span>
+                              <div className="admin-plan-usage">
+                                Docs: <strong>{docCount}</strong> / {docLimit === -1 ? '∞' : (docLimit ?? 30)}
+                              </div>
+                              {u.planExpiresAt && (
+                                <div className={`admin-plan-expiry ${isExpired ? 'expired' : ''}`}>
+                                  {isExpired ? '⚠️ Vencido: ' : 'Vence: '}
+                                  {new Date(u.planExpiresAt).toLocaleDateString('es-PE')}
+                                </div>
                               )}
+                            </div>
+                          </td>
+                          <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-primary)' }}>
+                            {u.invoicesCount || 0}
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span className={`status-pill ${u.status === 'ACTIVE' ? 'prod' : 'error'}`}>
+                              {u.status === 'ACTIVE' ? 'Activo' : 'Suspendido'}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <div className="admin-actions-cell">
+                              <button
+                                type="button"
+                                className="btn-admin-action plan"
+                                onClick={() => {
+                                  setSelectedUserForPlan(u);
+                                  setIsUserPlanModalOpen(true);
+                                }}
+                                title="Asignar o editar plan comercial"
+                              >
+                                <IconCrown size={12} />
+                                <span>Plan</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn-admin-action edit"
+                                onClick={() => {
+                                  setSelectedUserForEdit(u);
+                                  setIsEditUserModalOpen(true);
+                                }}
+                                title="Editar datos de usuario"
+                              >
+                                <IconEdit size={12} />
+                                <span>Editar</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                className="btn-admin-action key"
+                                onClick={() => {
+                                  setSelectedUserForPassword(u);
+                                  setIsResetPasswordModalOpen(true);
+                                }}
+                                title="Restablecer contraseña"
+                              >
+                                <IconKey size={12} />
+                                <span>Clave</span>
+                              </button>
+
+                              {u.role !== 'SUPERADMIN' && (
+                                <button
+                                  type="button"
+                                  className={`btn-admin-action ${u.status === 'ACTIVE' ? 'suspend' : 'reactivate'}`}
+                                  onClick={() => handleToggleUserStatus(u)}
+                                  title={u.status === 'ACTIVE' ? 'Suspender acceso a este usuario' : 'Reactivar acceso'}
+                                >
+                                  {u.status === 'ACTIVE' ? <IconLock size={12} /> : <IconCheck size={12} />}
+                                  <span>{u.status === 'ACTIVE' ? 'Suspender' : 'Activar'}</span>
+                                </button>
+                              )}
+
+                              {u.role !== 'SUPERADMIN' && (
+                                <button
+                                  type="button"
+                                  className="btn-admin-action delete"
+                                  onClick={() => {
+                                    setSelectedUserForDelete(u);
+                                    setIsDeleteUserModalOpen(true);
+                                  }}
+                                  title="Eliminar permanentemente este usuario y sus empresas"
+                                >
+                                  <IconTrash size={12} />
+                                  <span>Borrar</span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  ) : (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '36px 20px', color: 'var(--text-secondary)' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                          <IconUsers size={32} style={{ opacity: 0.4 }} />
+                          <span>No se encontraron cuentas que coincidan con la búsqueda o filtro.</span>
+                          {userSearchQuery && (
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => { setUserSearchQuery(''); setUserStatusFilter('ALL'); }}
+                              style={{ marginTop: '6px' }}
+                            >
+                              Limpiar Filtros
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* MOBILE CARDS VIEW (<= 768px) */}
+          <div className="admin-users-cards-view">
+            {filteredUsers.length > 0 ? (
+              filteredUsers.map(u => {
+                const userInitial = (u.name || u.email || 'U').charAt(0).toUpperCase();
+                const docLimit = u.plan?.docLimit;
+                const docCount = u.docsIssuedCount || 0;
+                const usagePct = docLimit === -1 ? 0 : Math.min(100, Math.round((docCount / (docLimit || 30)) * 100));
+                const isExpired = u.planExpiresAt && new Date() > new Date(u.planExpiresAt);
+
+                return (
+                  <div className="admin-mobile-user-card" key={u.id} style={{ opacity: u.status === 'SUSPENDED' ? 0.7 : 1 }}>
+                    {/* Header */}
+                    <div className="admin-mobile-card-header">
+                      <div className="admin-mobile-user-meta">
+                        <div className="admin-user-avatar">{userInitial}</div>
+                        <div className="admin-user-info">
+                          <span className="admin-user-name">{u.name || 'Sin Nombre'}</span>
+                          <span className="admin-user-email">{u.email}</span>
+                          <span className="admin-user-date">
+                            Reg: {new Date(u.createdAt).toLocaleDateString('es-PE')}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
+                        <span className={`status-pill ${u.status === 'ACTIVE' ? 'prod' : 'error'}`}>
+                          {u.status === 'ACTIVE' ? 'Activo' : 'Suspendido'}
+                        </span>
+                        <span className={`user-role-tag ${u.role === 'SUPERADMIN' ? 'superadmin' : 'tenant'}`}>
+                          {u.role === 'SUPERADMIN' ? 'Super Admin' : 'Inquilino'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Plan & Consumption */}
+                    <div className="admin-mobile-card-section">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div className="admin-mobile-section-title">
+                          <IconCrown size={13} style={{ color: '#f59e0b' }} />
+                          <span>{u.plan ? u.plan.name : 'Plan Gratuito'}</span>
+                        </div>
+                        <span style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                          {docCount} / {docLimit === -1 ? '∞' : (docLimit ?? 30)} docs
+                        </span>
+                      </div>
+                      {docLimit !== -1 && (
+                        <div className="admin-usage-progress-bar">
+                          <div
+                            className={`admin-usage-progress-fill ${usagePct >= 85 ? 'warning' : ''}`}
+                            style={{ width: `${usagePct}%` }}
+                          />
+                        </div>
+                      )}
+                      {u.planExpiresAt && (
+                        <div style={{ fontSize: '11px', marginTop: '3px', color: isExpired ? '#ef4444' : 'var(--text-muted)' }}>
+                          {isExpired ? '⚠️ Vencido: ' : 'Vence: '}
+                          {new Date(u.planExpiresAt).toLocaleDateString('es-PE')}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Companies Section */}
+                    <div className="admin-mobile-card-section">
+                      <div className="admin-mobile-section-title">
+                        <IconBuilding size={13} />
+                        <span>Empresas Vinculadas ({u.companies ? u.companies.length : 0})</span>
+                      </div>
+                      {u.companies && u.companies.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                          {u.companies.map(c => (
+                            <div key={c.id} className="admin-company-card">
+                              <div className="admin-company-header">
+                                <span className="admin-company-ruc">
+                                  <IconBuilding size={11} /> {c.ruc}
+                                </span>
+                                {c.hasCert && (
+                                  <span className={`status-pill ${c.isProduction ? 'prod' : 'beta'}`} style={{ fontSize: '9px', padding: '1px 5px' }}>
+                                    {c.isProduction ? 'PROD' : 'BETA'}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="admin-company-name">{c.razonSocial}</div>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>Sin empresas registradas aún</span>
+                        <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          Sin empresas registradas aún
+                        </span>
                       )}
-                    </td>
-                    <td>
-                      {u.plan ? (
-                        <div>
-                          <span className="status-pill prod" style={{ fontSize: '11px', fontWeight: 700 }}>
-                            {u.plan.name}
-                          </span>
-                          <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '3px' }}>
-                            Docs: <strong>{u.docsIssuedCount || 0}</strong> / {u.plan.docLimit === -1 ? '∞' : u.plan.docLimit}
-                          </div>
-                          {u.planExpiresAt && (
-                            <div style={{ fontSize: '10.5px', color: new Date() > new Date(u.planExpiresAt) ? '#ef4444' : 'var(--text-muted)' }}>
-                              {new Date() > new Date(u.planExpiresAt) ? 'Vencido: ' : 'Vence: '}{new Date(u.planExpiresAt).toLocaleDateString()}
-                            </div>
-                          )}
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }}>Plan Gratuito</span>
+                    </div>
+
+                    {/* Mobile Action Buttons Grid */}
+                    <div className="admin-mobile-actions-grid">
+                      <button
+                        type="button"
+                        className="btn-admin-action plan"
+                        onClick={() => { setSelectedUserForPlan(u); setIsUserPlanModalOpen(true); }}
+                      >
+                        <IconCrown size={13} />
+                        <span>Plan</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-admin-action edit"
+                        onClick={() => { setSelectedUserForEdit(u); setIsEditUserModalOpen(true); }}
+                      >
+                        <IconEdit size={13} />
+                        <span>Editar</span>
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-admin-action key"
+                        onClick={() => { setSelectedUserForPassword(u); setIsResetPasswordModalOpen(true); }}
+                      >
+                        <IconKey size={13} />
+                        <span>Clave</span>
+                      </button>
+                      {u.role !== 'SUPERADMIN' && (
+                        <button
+                          type="button"
+                          className={`btn-admin-action ${u.status === 'ACTIVE' ? 'suspend' : 'reactivate'}`}
+                          onClick={() => handleToggleUserStatus(u)}
+                        >
+                          {u.status === 'ACTIVE' ? <IconLock size={13} /> : <IconCheck size={13} />}
+                          <span>{u.status === 'ACTIVE' ? 'Suspender' : 'Activar'}</span>
+                        </button>
                       )}
-                    </td>
-                    <td style={{ textAlign: 'center', fontWeight: 700 }}>
-                      {u.invoicesCount || 0}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <span className={`status-pill ${u.status === 'ACTIVE' ? 'prod' : 'error'}`}>
-                        {u.status === 'ACTIVE' ? 'Activo' : 'Suspendido'}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '5px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
-                        {/* Gestionar Plan */}
+                      {u.role !== 'SUPERADMIN' && (
                         <button
                           type="button"
-                          className="btn-sm btn-outline-cyan"
-                          onClick={() => {
-                            setSelectedUserForPlan(u);
-                            setIsUserPlanModalOpen(true);
-                          }}
-                          title="Asignar plan o regularizar cuota de documentos"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '4px 8px' }}
+                          className="btn-admin-action delete action-col-2"
+                          onClick={() => { setSelectedUserForDelete(u); setIsDeleteUserModalOpen(true); }}
                         >
-                          <IconCrown size={12} />
-                          <span>Plan</span>
+                          <IconTrash size={13} />
+                          <span>Borrar</span>
                         </button>
-
-                        {/* Editar Datos */}
-                        <button
-                          type="button"
-                          className="btn-sm btn-secondary"
-                          onClick={() => {
-                            setSelectedUserForEdit(u);
-                            setIsEditUserModalOpen(true);
-                          }}
-                          title="Editar nombre, correo o rol de la cuenta"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '4px 8px' }}
-                        >
-                          <IconEdit size={12} />
-                          <span>Editar</span>
-                        </button>
-
-                        {/* Cambiar / Restablecer Clave */}
-                        <button
-                          type="button"
-                          className="btn-sm btn-outline-primary"
-                          onClick={() => {
-                            setSelectedUserForPassword(u);
-                            setIsResetPasswordModalOpen(true);
-                          }}
-                          title="Asignar o restablecer contraseña a esta cuenta"
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '4px 8px' }}
-                        >
-                          <IconKey size={12} />
-                          <span>Clave</span>
-                        </button>
-
-                        {/* Suspender o Reactivar */}
-                        {u.role !== 'SUPERADMIN' ? (
-                          <button
-                            type="button"
-                            className={`btn-sm ${u.status === 'ACTIVE' ? 'btn-danger-outline' : 'btn-outline-cyan'}`}
-                            onClick={() => handleToggleUserStatus(u)}
-                            title={u.status === 'ACTIVE' ? 'Suspender acceso a este usuario' : 'Reactivar acceso'}
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '4px 8px' }}
-                          >
-                            {u.status === 'ACTIVE' ? <IconLock size={12} /> : <IconCheck size={12} />}
-                            <span>{u.status === 'ACTIVE' ? 'Suspender' : 'Reactivar'}</span>
-                          </button>
-                        ) : null}
-
-                        {/* Eliminar Usuario */}
-                        {u.role !== 'SUPERADMIN' ? (
-                          <button
-                            type="button"
-                            className="btn-sm btn-danger-outline"
-                            onClick={() => {
-                              setSelectedUserForDelete(u);
-                              setIsDeleteUserModalOpen(true);
-                            }}
-                            title="Eliminar permanentemente este usuario y sus empresas"
-                            style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '4px 8px' }}
-                          >
-                            <IconTrash size={12} />
-                            <span>Eliminar</span>
-                          </button>
-                        ) : null}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={{ textAlign: 'center', padding: '30px 16px', color: 'var(--text-secondary)' }}>
+                No se encontraron cuentas con el filtro seleccionado.
+              </div>
+            )}
           </div>
         </div>
       )}

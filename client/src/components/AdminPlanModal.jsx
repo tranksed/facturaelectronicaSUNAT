@@ -153,7 +153,7 @@ export default function AdminPlanModal({ isOpen, onClose, plan, API_URL, authTok
         )}
 
         <form onSubmit={handleSubmit}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
             <div className="form-group-field">
               <label className="form-label">Nombre del Plan</label>
               <input 
@@ -191,7 +191,7 @@ export default function AdminPlanModal({ isOpen, onClose, plan, API_URL, authTok
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: '10px' }}>
             <div className="form-group-field">
               <label className="form-label">Precio (S/.)</label>
               <input 
@@ -245,7 +245,7 @@ export default function AdminPlanModal({ isOpen, onClose, plan, API_URL, authTok
             <span style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '8px' }}>
               🎯 Módulos y Funcionalidades Activas en este Plan:
             </span>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '8px' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', cursor: 'pointer' }}>
                 <input type="checkbox" checked={true} disabled={true} />
                 <span>🌐 Facturación Web SUNAT (Base)</span>
@@ -286,7 +286,7 @@ export default function AdminPlanModal({ isOpen, onClose, plan, API_URL, authTok
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
             <div className="form-group-field">
               <label className="form-label">Duración (Días)</label>
               <input 

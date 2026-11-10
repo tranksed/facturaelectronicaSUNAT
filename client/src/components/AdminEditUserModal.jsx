@@ -129,7 +129,7 @@ export default function AdminEditUserModal({ isOpen, onClose, user, API_URL, aut
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '20px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '20px' }}>
             <div className="form-group-field">
               <label className="form-label" style={{ fontSize: '12px', fontWeight: 600 }}>Rol en la Plataforma</label>
               <select 
